@@ -1,0 +1,29 @@
+{
+  "name": "mapa-polar",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@types/three": "^0.186.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.479.0",
+    "next": "latest",
+    "proj4": "^2.15.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2",
+    "three": "^0.174.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "postcss": "^8.5.31",
+    "tailwindcss": "^4.3.3"
+  }
+}
