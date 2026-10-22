@@ -2,8 +2,14 @@
 
 import { useState } from 'react';
 import { MAP_LAYERS, MAP_LAYER_CATEGORIES } from '@/lib/mapLayers';
+import MeasureTool from './MeasureTool';
 
-export default function Sidebar({ activeLayers = {}, onToggleLayer }) {
+export default function Sidebar({
+  activeLayers = {},
+  onToggleLayer,
+  measurePoints = [],
+  onClearMeasurements,
+}) {
   const [collapsedCategories, setCollapsedCategories] = useState({});
 
   const toggleCategory = (catName) => {
@@ -37,8 +43,16 @@ export default function Sidebar({ activeLayers = {}, onToggleLayer }) {
         </span>
       </div>
 
-      {/* LISTA DE CAPAS AGRUPADAS */}
+      {/* LISTA DE CAPAS Y WIDGET DE MEDICIÓN */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-slate-950">
+        
+        {/* PANEL DE MEDIDOR DE DISTANCIA (Se muestra si la capa 'measure' está activa) */}
+        <MeasureTool
+          isMeasureActive={!!activeLayers.measure}
+          measurePoints={measurePoints}
+          onClearMeasurements={onClearMeasurements}
+        />
+
         {categories.map((catName) => {
           const layersInCat = MAP_LAYERS.filter((l) => l.category === catName);
           if (layersInCat.length === 0) return null;
