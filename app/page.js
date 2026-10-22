@@ -7,24 +7,23 @@ import Sidebar from '@/components/ui/Sidebar';
 import { INITIAL_ACTIVE_LAYERS } from '@/lib/mapLayers';
 
 export default function Home() {
-  // Estado de capas inicializado
   const [layers, setLayers] = useState(INITIAL_ACTIVE_LAYERS);
-
-  // Estado de navegación y orientación
-  const INITIAL_ROTATION = 180;
-  const INITIAL_ZOOM = 1.00;
-  const INITIAL_OFFSET = { x: 0, y: 0 };
-
-  const [offset, setOffset] = useState(INITIAL_OFFSET);
   const [viewMode, setViewMode] = useState('2D');
+
+  // CONTROL DE VISIBILIDAD MÓVIL Y COLAPSO PC
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const [rotation, setRotation] = useState(INITIAL_ROTATION);
-  const [zoom, setZoom] = useState(INITIAL_ZOOM);
-
-  // Puntos de Medición de Distancia
+  const [rotation, setRotation] = useState(180);
+  const [zoom, setZoom] = useState(1.0);
   const [measurePoints, setMeasurePoints] = useState([]);
+
+  const toggleLayer = (layerName) => {
+    setLayers((prev) => ({
+      ...prev,
+      [layerName]: !prev[layerName],
+    }));
+  };
 
   const handleAddMeasurePoint = (point) => {
     setMeasurePoints((prev) => {
@@ -37,29 +36,16 @@ export default function Home() {
     setMeasurePoints([]);
   };
 
-  const toggleLayer = (layerName) => {
-    setLayers((prev) => ({
-      ...prev,
-      [layerName]: !prev[layerName],
-    }));
-  };
-
-  const applyPreset = (presetLayers) => {
-    setLayers((prev) => ({
-      ...prev,
-      ...presetLayers,
-    }));
-  };
-
   return (
     <div className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col font-sans overflow-hidden">
-      {/* NAVBAR SUPERIOR HUD */}
-      <header className="w-full bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2 flex items-center justify-between z-40 shrink-0">
+      {/* NAVBAR SUPERIOR */}
+      <header className="w-full bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2 flex items-center justify-between z-30 shrink-0">
         <div className="flex items-center gap-3">
+          {/* BOTÓN TOGGLE PARA MÓVIL Y TABLET */}
           <button
             type="button"
-            onClick={() => setIsSidebarOpen(true)}
-            className="lg:hidden p-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5"
+            onClick={() => setIsSidebarOpen((prev) => !prev)}
+            className="lg:hidden p-1.5 bg-cyan-950/80 hover:bg-cyan-900 rounded-xl text-cyan-300 border border-cyan-500/40 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_10px_rgba(6,182,212,0.2)] cursor-pointer"
           >
             <span>🎛️</span>
             <span>Capas</span>
@@ -73,7 +59,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* SWITCH DE VISTA 2D / 3D */}
+        {/* CONTROLES VISTA 2D / 3D */}
         <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
           <button
             type="button"
@@ -102,15 +88,14 @@ export default function Home() {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
           activeLayers={layers}
           onToggleLayer={toggleLayer}
-          onApplyPreset={applyPreset}
           measurePoints={measurePoints}
           onClearMeasurements={handleClearMeasurements}
-        />  
+        />
 
-        <main className="flex-1 h-full w-full relative flex justify-center items-center overflow-hidden bg-slate-950">
+        <main className="flex-1 h-full relative flex justify-center items-center overflow-hidden bg-slate-950">
           {viewMode === '2D' ? (
             <PolarCanvas
               activeLayers={layers}
