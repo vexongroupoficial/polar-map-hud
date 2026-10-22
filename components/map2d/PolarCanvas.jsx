@@ -157,30 +157,7 @@ export default function PolarCanvas({
     updateZoom(targetZoom);
   };
 
-  // MANEJADOR DE RUEDA DE MOUSE (ZOOM FOCAL EN PC)
-  const handleWheel = (e) => {
-    e.preventDefault();
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left - width / 2;
-    const mouseY = e.clientY - rect.top - height / 2;
-
-    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
-    const nextZoom = Math.min(Math.max(internalZoom * zoomFactor, 0.8), 10);
-
-    const scaleChange = nextZoom / internalZoom;
-    setOffset((prevOffset) => ({
-      x: mouseX - (mouseX - prevOffset.x) * scaleChange,
-      y: mouseY - (mouseY - prevOffset.y) * scaleChange,
-    }));
-
-    updateZoom(nextZoom);
-  };
-
-  // MANEJADORES POINTER MULTI-TOUCH Y HOVER VISIBLE
+  // MANEJADORES POINTER TÁCTILES Y DE RATÓN
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -188,7 +165,7 @@ export default function PolarCanvas({
     canvas.setPointerCapture(e.pointerId);
     activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // CASO 1: DETECCIÓN DE DOS PUNTOS TÁCTILES (PINCH TO ZOOM)
+    // CASO A: DOS DEDOS (ZOOM TÁCTIL)
     if (activePointersRef.current.size === 2) {
       isDraggingRef.current = false;
       isPanningRef.current = false;
@@ -201,7 +178,7 @@ export default function PolarCanvas({
       return;
     }
 
-    // CASO 2: UN SOLO PUNTO TÁCTIL O MOUSE (ROTACIÓN / ARRASTRE)
+    // CASO B: UN SOLO DEDO O CURSOR DE RATÓN
     if (activePointersRef.current.size === 1) {
       const rect = canvas.getBoundingClientRect();
       const centerX = width / 2 + offset.x;
@@ -209,22 +186,25 @@ export default function PolarCanvas({
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
 
-      if (e.ctrlKey || e.button === 1) {
-        isPanningRef.current = true;
-        panStartRef.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
-        return;
-      }
+      const distToCenter = Math.hypot(clickX - centerX, clickY - centerY);
 
-      if (e.button === 0 || e.pointerType === 'touch') {
+      // Si se toca el anillo exterior (perímetro), se activa la ROTACIÓN Azimutal
+      if (distToCenter > mapRadius * 0.82 && distToCenter <= mapRadius * 1.15) {
         isDraggingRef.current = true;
+        isPanningRef.current = false;
         const angleRad = Math.atan2(clickY - centerY, clickX - centerX);
         rotateStartAngleRef.current = (angleRad * 180) / Math.PI;
         initialRotationRef.current = internalRotation;
+      } else {
+        // En cualquier otra zona interior, 1 dedo DESPLAZA EL PLANO en 4 direcciones (Pan)
+        isPanningRef.current = true;
+        isDraggingRef.current = false;
+        panStartRef.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
       }
     }
   };
 
-  const handlePointerMove = (e) => {
+const handlePointerMove = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -232,7 +212,7 @@ export default function PolarCanvas({
       activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
 
-    // CASO 1: GESTO TÁCTIL DE DOS DEDOS (PINCH ZOOM)
+    // CASO 1: PINCH TO ZOOM DE DOS DEDOS
     if (activePointersRef.current.size === 2) {
       const points = Array.from(activePointersRef.current.values());
       const currentDist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
@@ -245,7 +225,7 @@ export default function PolarCanvas({
       return;
     }
 
-    // CASO 2: MOVIMIENTO O HOVER DE UN PUNTO (REGISTRAR SIEMPRE POSICIÓN DEL DIBUJO)
+// CASO 2: DESPLAZAMIENTO (PAN) / ROTACIÓN DE UN DEDO Y TELEMETRÍA
     const rect = canvas.getBoundingClientRect();
     const centerX = width / 2 + offset.x;
     const centerY = height / 2 + offset.y;
@@ -265,7 +245,6 @@ export default function PolarCanvas({
 
     const geoInfo = getCountryAndContinentAtPoint(lat, lon, countriesData);
 
-    // MANTENER SIEMPRE canvasX y canvasY PARA QUE LA MIRA PERMANEZCA VISIBLE
     setMousePos({
       lat,
       lon,
@@ -277,19 +256,21 @@ export default function PolarCanvas({
       continent: geoInfo.continent,
     });
 
-    if (isDraggingRef.current) {
-      const currentAngleRad = Math.atan2(currentY - centerY, currentX - centerX);
-      const currentAngleDeg = (currentAngleRad * 180) / Math.PI;
-      const deltaAngle = currentAngleDeg - rotateStartAngleRef.current;
-      updateRotation(initialRotationRef.current + deltaAngle);
-      return;
-    }
-
+    // Desplazamiento del plano en 4 direcciones
     if (isPanningRef.current) {
       setOffset({
         x: e.clientX - panStartRef.current.x,
         y: e.clientY - panStartRef.current.y,
       });
+      return;
+    }
+
+// Rotación sobre el compás
+    if (isDraggingRef.current) {
+      const currentAngleRad = Math.atan2(currentY - centerY, currentX - centerX);
+      const currentAngleDeg = (currentAngleRad * 180) / Math.PI;
+      const deltaAngle = currentAngleDeg - rotateStartAngleRef.current;
+      updateRotation(initialRotationRef.current + deltaAngle);
     }
   };
 
