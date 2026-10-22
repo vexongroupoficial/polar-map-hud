@@ -323,6 +323,30 @@ const handlePointerMove = (e) => {
     }
   };
 
+    // MANEJADOR DE RUEDA DE MOUSE (ZOOM FOCAL)
+      const handleWheel = (e) => {
+        e.preventDefault();
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left - width / 2;
+        const mouseY = e.clientY - rect.top - height / 2;
+
+        const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
+        const nextZoom = Math.min(Math.max(internalZoom * zoomFactor, 0.8), 10);
+
+        const scaleChange = nextZoom / internalZoom;
+        setOffset((prevOffset) => ({
+          x: mouseX - (mouseX - prevOffset.x) * scaleChange,
+          y: mouseY - (mouseY - prevOffset.y) * scaleChange,
+        }));
+
+        updateZoom(nextZoom);
+      };
+
+
   // 5. Bucle de Renderizado
   useEffect(() => {
     const canvas = canvasRef.current;
