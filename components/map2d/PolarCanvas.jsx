@@ -60,6 +60,8 @@ export default function PolarCanvas({
     lon: 0,
     rho: 0,
     theta: 0,
+    canvasX: 400,
+    canvasY: 400,
     country: 'Mar Abierto',
     continent: 'Océano Global',
   });
@@ -83,6 +85,11 @@ export default function PolarCanvas({
   const rotateStartAngleRef = useRef(0);
   const initialRotationRef = useRef(0);
   const panStartRef = useRef({ x: 0, y: 0 });
+
+  // Referencias exclusivas para control Táctil Multi-touch (Pinch-to-Zoom de 2 Puntos)
+  const activePointersRef = useRef(new Map());
+  const initialPinchDistRef = useRef(0);
+  const initialPinchZoomRef = useRef(1);
 
   // Redimensionamiento Responsivo
   useEffect(() => {
@@ -131,11 +138,9 @@ export default function PolarCanvas({
 
   // CENTRADO FOCAL EN CIUDAD/AEROPUERTO
   const handleSelectCity = (lat, lon) => {
-    // 1. Ajustar rotación para orientar la longitud frente al observador
     const targetRotation = (180 - lon + 360) % 360;
     updateRotation(targetRotation);
 
-    // 2. Calcular posición (x, y) de la ciudad respecto al centro
     const targetZoom = 2.8;
     const currentMapRadius = (Math.min(width, height) / 2 - 45) * targetZoom;
     const radius = currentMapRadius * ((90 - lat) / 180);
@@ -144,7 +149,6 @@ export default function PolarCanvas({
     const targetX = radius * Math.sin(thetaRad);
     const targetY = radius * Math.cos(thetaRad);
 
-    // 3. Mover offset para encuadrar la ubicación exactamente en el centro de la pantalla
     setOffset({
       x: -targetX,
       y: -targetY,
@@ -153,7 +157,7 @@ export default function PolarCanvas({
     updateZoom(targetZoom);
   };
 
-  // MANEJADOR DE RUEDA DE MOUSE (ZOOM FOCAL)
+  // MANEJADOR DE RUEDA DE MOUSE (ZOOM FOCAL EN PC)
   const handleWheel = (e) => {
     e.preventDefault();
 
@@ -176,29 +180,47 @@ export default function PolarCanvas({
     updateZoom(nextZoom);
   };
 
-  // MANEJADORES POINTER
+  // MANEJADORES POINTER MULTI-TOUCH Y HOVER VISIBLE
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     canvas.setPointerCapture(e.pointerId);
-    const rect = canvas.getBoundingClientRect();
-    const centerX = width / 2 + offset.x;
-    const centerY = height / 2 + offset.y;
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    if (e.ctrlKey || e.button === 1) {
-      isPanningRef.current = true;
-      panStartRef.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+    // CASO 1: DETECCIÓN DE DOS PUNTOS TÁCTILES (PINCH TO ZOOM)
+    if (activePointersRef.current.size === 2) {
+      isDraggingRef.current = false;
+      isPanningRef.current = false;
+
+      const points = Array.from(activePointersRef.current.values());
+      const dist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+
+      initialPinchDistRef.current = dist;
+      initialPinchZoomRef.current = internalZoom;
       return;
     }
 
-    if (e.button === 0) {
-      isDraggingRef.current = true;
-      const angleRad = Math.atan2(clickY - centerY, clickX - centerX);
-      rotateStartAngleRef.current = (angleRad * 180) / Math.PI;
-      initialRotationRef.current = internalRotation;
+    // CASO 2: UN SOLO PUNTO TÁCTIL O MOUSE (ROTACIÓN / ARRASTRE)
+    if (activePointersRef.current.size === 1) {
+      const rect = canvas.getBoundingClientRect();
+      const centerX = width / 2 + offset.x;
+      const centerY = height / 2 + offset.y;
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      if (e.ctrlKey || e.button === 1) {
+        isPanningRef.current = true;
+        panStartRef.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+        return;
+      }
+
+      if (e.button === 0 || e.pointerType === 'touch') {
+        isDraggingRef.current = true;
+        const angleRad = Math.atan2(clickY - centerY, clickX - centerX);
+        rotateStartAngleRef.current = (angleRad * 180) / Math.PI;
+        initialRotationRef.current = internalRotation;
+      }
     }
   };
 
@@ -206,6 +228,24 @@ export default function PolarCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    if (activePointersRef.current.has(e.pointerId)) {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // CASO 1: GESTO TÁCTIL DE DOS DEDOS (PINCH ZOOM)
+    if (activePointersRef.current.size === 2) {
+      const points = Array.from(activePointersRef.current.values());
+      const currentDist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+
+      if (initialPinchDistRef.current > 0) {
+        const scale = currentDist / initialPinchDistRef.current;
+        const nextZoom = initialPinchZoomRef.current * scale;
+        updateZoom(nextZoom);
+      }
+      return;
+    }
+
+    // CASO 2: MOVIMIENTO O HOVER DE UN PUNTO (REGISTRAR SIEMPRE POSICIÓN DEL DIBUJO)
     const rect = canvas.getBoundingClientRect();
     const centerX = width / 2 + offset.x;
     const centerY = height / 2 + offset.y;
@@ -216,8 +256,6 @@ export default function PolarCanvas({
     const dy = currentY - centerY;
     const rho = Math.hypot(dx, dy);
 
-    if (rho > mapRadius) return;
-
     const lat = 90 - (rho / mapRadius) * 180;
     let thetaRad = Math.atan2(dx, dy);
     let thetaDeg = (thetaRad * 180) / Math.PI;
@@ -227,6 +265,7 @@ export default function PolarCanvas({
 
     const geoInfo = getCountryAndContinentAtPoint(lat, lon, countriesData);
 
+    // MANTENER SIEMPRE canvasX y canvasY PARA QUE LA MIRA PERMANEZCA VISIBLE
     setMousePos({
       lat,
       lon,
@@ -259,8 +298,16 @@ export default function PolarCanvas({
     if (canvas && canvas.hasPointerCapture(e.pointerId)) {
       canvas.releasePointerCapture(e.pointerId);
     }
-    isDraggingRef.current = false;
-    isPanningRef.current = false;
+
+    activePointersRef.current.delete(e.pointerId);
+
+    if (activePointersRef.current.size < 2) {
+      initialPinchDistRef.current = 0;
+    }
+    if (activePointersRef.current.size === 0) {
+      isDraggingRef.current = false;
+      isPanningRef.current = false;
+    }
   };
 
   const handleResetOffset = () => {
@@ -269,34 +316,31 @@ export default function PolarCanvas({
     updateZoom(1.0);
   };
 
-    const handleClick = (e) => {
-      // Verificar que la capa de medición esté activa
-      if (!activeLayers?.measure) return;
+  const handleClick = (e) => {
+    if (!activeLayers?.measure) return;
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      const rect = canvas.getBoundingClientRect();
-      const centerX = width / 2 + offset.x;
-      const centerY = height / 2 + offset.y;
+    const rect = canvas.getBoundingClientRect();
+    const centerX = width / 2 + offset.x;
+    const centerY = height / 2 + offset.y;
 
-      const clickX = e.clientX - rect.left - centerX;
-      const clickY = e.clientY - rect.top - centerY;
+    const clickX = e.clientX - rect.left - centerX;
+    const clickY = e.clientY - rect.top - centerY;
 
-      const rho = Math.hypot(clickX, clickY);
-      if (rho > mapRadius) return;
+    const rho = Math.hypot(clickX, clickY);
+    if (rho > mapRadius) return;
 
-      // Convertir (X, Y) del Canvas de vuelta a Latitud y Longitud
-      const lat = 90 - (rho / mapRadius) * 180;
-      let thetaRad = Math.atan2(clickX, clickY);
-      let lon = (thetaRad * 180) / Math.PI - (internalRotation - 180);
-      lon = (((lon + 180) % 360) + 360) % 360 - 180;
+    const lat = 90 - (rho / mapRadius) * 180;
+    let thetaRad = Math.atan2(clickX, clickY);
+    let lon = (thetaRad * 180) / Math.PI - (internalRotation - 180);
+    lon = (((lon + 180) % 360) + 360) % 360 - 180;
 
-      // Invocar el callback recibido desde el componente padre
-      if (typeof onAddMeasurePoint === 'function') {
-        onAddMeasurePoint({ lat, lon });
-      }
-    };
+    if (typeof onAddMeasurePoint === 'function') {
+      onAddMeasurePoint({ lat, lon });
+    }
+  };
 
   // 5. Bucle de Renderizado
   useEffect(() => {
@@ -354,6 +398,7 @@ export default function PolarCanvas({
       if (activeLayers?.sunlight || activeLayers?.moon || activeLayers?.analemma) drawAstronomy(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
       if (activeLayers?.measure) drawMeasurements(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
 
+      // DIBUJAR LA MIRA TÁCTICA SOBRE EL CURSOR EN TIEMPO REAL
       drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos);
 
       animId = requestAnimationFrame(renderFrame);
@@ -385,7 +430,7 @@ export default function PolarCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full flex justify-center items-center bg-slate-950 p-1 overflow-hidden select-none"
+      className="relative w-full h-full flex justify-center items-center bg-slate-950 p-1 overflow-hidden select-none touch-none"
     >
       <CitySearch onSelectLocation={handleSelectCity} airportsData={airportsData} />
 
@@ -415,7 +460,7 @@ export default function PolarCanvas({
         onClick={handleClick}
         onWheel={handleWheel}
         style={{ cursor: 'none' }}
-        className="cursor-grab active:cursor-grabbing rounded-full touch-none z-10"
+        className="rounded-full touch-none z-10"
       />
     </div>
   );
