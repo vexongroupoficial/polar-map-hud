@@ -1,16 +1,29 @@
 'use client';
 
 import { useState } from 'react';
-import PolarCanvas from '@/components/map2d/PolarCanvas';
-import PolarScene3D from '@/components/map3d/PolarScene3D';
+import dynamic from 'next/dynamic';
 import Sidebar from '@/components/ui/Sidebar';
 import { INITIAL_ACTIVE_LAYERS } from '@/lib/mapLayers';
+
+// Carga dinámica deshabilitando Server-Side Rendering para evitar fallos de build
+const PolarCanvas = dynamic(() => import('@/components/map2d/PolarCanvas'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center gap-3 text-cyan-400 font-mono text-xs">
+      <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+      <span>INICIALIZANDO ESTACIÓN GEODÉSICA...</span>
+    </div>
+  ),
+});
+
+const PolarScene3D = dynamic(() => import('@/components/map3d/PolarScene3D'), {
+  ssr: false,
+});
 
 export default function Home() {
   const [layers, setLayers] = useState(INITIAL_ACTIVE_LAYERS);
   const [viewMode, setViewMode] = useState('2D');
 
-  // CONTROL DE VISIBILIDAD MÓVIL Y COLAPSO PC
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -38,10 +51,8 @@ export default function Home() {
 
   return (
     <div className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col font-sans overflow-hidden">
-      {/* NAVBAR SUPERIOR */}
       <header className="w-full bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-2 flex items-center justify-between z-30 shrink-0">
         <div className="flex items-center gap-3">
-          {/* BOTÓN TOGGLE PARA MÓVIL Y TABLET */}
           <button
             type="button"
             onClick={() => setIsSidebarOpen((prev) => !prev)}
@@ -59,7 +70,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* CONTROLES VISTA 2D / 3D */}
         <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
           <button
             type="button"
@@ -82,7 +92,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ÁREA DE TRABAJO */}
       <div className="flex-1 flex relative overflow-hidden">
         <Sidebar
           isOpen={isSidebarOpen}
