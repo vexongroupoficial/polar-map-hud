@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Gradientes Neón Geodésicos -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25" />
+      <stop offset="70%" stop-color="#020617" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#020617" stop-opacity="1" />
+    </radialGradient>
+
+    <radialGradient id="centerPulse" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="1" />
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="ringCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <linearGradient id="axisPink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#f43f5e" />
+    </linearGradient>
+
+    <!-- Sombras y Resplandores Glow HUD -->
+    <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="glowPink" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- FONDO TÁCTICO SLATE DENSE -->
+  <rect width="512" height="512" rx="110" fill="#020617" />
+  <circle cx="256" cy="256" r="240" fill="url(#bgGlow)" />
+
+  <!-- ANILLO EXTERIOR DEL COMPÁS PANTALLA -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#0e7490" stroke-width="3" stroke-dasharray="12 6" opacity="0.6" />
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#ringCyan)" stroke-width="4" filter="url(#glowCyan)" />
+
+  <!-- PARALELOS CONCÉNTRICOS Y ECUADOR ROJO -->
+  <circle cx="256" cy="256" r="145" fill="none" stroke="#ef4444" stroke-width="3.5" stroke-dasharray="8 4" opacity="0.85" />
+  <circle cx="256" cy="256" r="90" fill="none" stroke="#38bdf8" stroke-width="2" opacity="0.5" />
+  <circle cx="256" cy="256" r="40" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.7" />
+
+  <!-- MERIDIANOS Y EJES CARDINALES -->
+  <line x1="256" y1="36" x2="256" y2="476" stroke="url(#ringCyan)" stroke-width="2.5" opacity="0.4" />
+  <line x1="36" y1="256" x2="476" y2="256" stroke="url(#ringCyan)" stroke-width="2.5" opacity="0.4" />
+
+  <!-- RUTA GEODÉSICA ORTODRÓMICA EN CURVA POLAR NEÓN (ROSA/PINK) -->
+  <path d="M 120 220 Q 256 110 390 280" fill="none" stroke="url(#axisPink)" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 5" filter="url(#glowPink)" />
+
+  <!-- MARCADORES DE PUNTOS ORTODRÓMICOS (P1 & P2) -->
+  <circle cx="120" cy="220" r="9" fill="#38bdf8" stroke="#ffffff" stroke-width="2.5" filter="url(#glowCyan)" />
+  <circle cx="390" cy="280" r="9" fill="#ec4899" stroke="#ffffff" stroke-width="2.5" filter="url(#glowPink)" />
+
+  <!-- RETÍCULA DEL POLO NORTE (CENTRO DE ORIGEN TÁCTICO) -->
+  <circle cx="256" cy="256" r="20" fill="url(#centerPulse)" />
+  <circle cx="256" cy="256" r="6" fill="#ef4444" />
+  
+  <!-- MIRA DE BARRIDO Y MARCAS DE GRADOS CUADRANTE -->
+  <path d="M 256 256 L 390 120" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 3" opacity="0.7" />
+  <polygon points="256,16 264,36 248,36" fill="#38bdf8" />
+  <polygon points="256,496 264,476 248,476" fill="#38bdf8" />
+  <polygon points="16,256 36,248 36,264" fill="#38bdf8" />
+  <polygon points="496,256 476,248 476,264" fill="#38bdf8" />
+</svg>
