@@ -1,57 +1,161 @@
 'use client';
 
-import { calculateHaversineDistance } from '../map2d/layers/drawMeasurements';
+import { useState } from 'react';
+import { MAP_LAYERS, MAP_LAYER_CATEGORIES } from '@/lib/mapLayers';
+import MeasureTool from './MeasureTool'; // Importar el panel de medición
 
-export default function MeasureTool({ measurePoints = [], onClearMeasurements }) {
-  const points = measurePoints || [];
-  const p1 = points[0];
-  const p2 = points[1];
+export default function Sidebar({
+  activeLayers = {},
+  onToggleLayer,
+  measurePoints = [],
+  onClearMeasurements,
+}) {
+  const [collapsedCategories, setCollapsedCategories] = useState({});
 
-  const distanceKm = p1 && p2 ? calculateHaversineDistance(p1.lat, p1.lon, p2.lat, p2.lon) : null;
+  const toggleCategory = (catName) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [catName]: !prev[catName],
+    }));
+  };
+
+  const categories = Object.values(MAP_LAYER_CATEGORIES);
+
+  const handleToggle = (e, layerId) => {
+    e.stopPropagation();
+    if (typeof onToggleLayer === 'function') {
+      onToggleLayer(layerId);
+    }
+  };
 
   return (
-    <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-      <div className="flex justify-between items-center">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-          Medidor de Distancia
-        </h3>
-        {points.length > 0 && (
-          <button
-            onClick={onClearMeasurements}
-            className="text-[10px] text-rose-400 hover:underline"
-          >
-            Limpiar Puntos
-          </button>
-        )}
+    <aside className="w-80 h-full bg-slate-950/95 backdrop-blur-md border-r border-cyan-500/30 flex flex-col justify-between p-3 select-none z-20 shadow-[4px_0_24px_rgba(0,0,0,0.9)] overflow-hidden">
+      {/* CABECERA TÁCTICA */}
+      <div className="mb-3 border-b border-cyan-500/30 pb-2 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+          <h2 className="text-xs font-mono font-bold tracking-widest text-cyan-300 uppercase">
+            CONTROL DE CAPAS GEODÉSICAS
+          </h2>
+        </div>
+        <span className="text-[10px] font-mono text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900">
+          v2.4
+        </span>
       </div>
 
-      <p className="text-[11px] text-slate-400">
-        Activa la capa de medición y haz clic en el mapa para marcar P1 y P2.
-      </p>
+      {/* ÁREA DE SCROLL CON MEDIDOR Y CATEGORÍAS */}
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-slate-950">
+        
+        {/* PANEL DE MEDIDOR (Se muestra cuando 'measure' está encendido) */}
+        <MeasureTool
+          isMeasureActive={!!activeLayers.measure}
+          measurePoints={measurePoints}
+          onClearMeasurements={onClearMeasurements}
+        />
 
-      <div className="space-y-1 text-xs font-mono">
-        <div className="flex justify-between text-slate-300">
-          <span>P1:</span>
-          <span>
-            {p1 ? `${p1.lat.toFixed(2)}°, ${p1.lon.toFixed(2)}°` : 'Haga clic en mapa'}
-          </span>
-        </div>
-        <div className="flex justify-between text-slate-300">
-          <span>P2:</span>
-          <span>
-            {p2 ? `${p2.lat.toFixed(2)}°, ${p2.lon.toFixed(2)}°` : 'Haga clic en mapa'}
-          </span>
-        </div>
+        {categories.map((catName) => {
+          const layersInCat = MAP_LAYERS.filter((l) => l.category === catName);
+          if (layersInCat.length === 0) return null;
+
+          const isCollapsed = !!collapsedCategories[catName];
+          const activeCount = layersInCat.filter((l) => !!activeLayers[l.id]).length;
+
+          return (
+            <div
+              key={catName}
+              className="border border-slate-800/90 rounded-lg bg-slate-900/50 overflow-hidden transition-all duration-200"
+            >
+              {/* ENCABEZADO DE CATEGORÍA COLAPSABLE */}
+              <button
+                type="button"
+                onClick={() => toggleCategory(catName)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-slate-900/90 hover:bg-slate-800/70 border-b border-slate-800/60 transition cursor-pointer"
+              >
+                <span className="text-cyan-400 font-mono text-xs font-semibold tracking-wider">
+                  {catName}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300 font-medium">
+                    {activeCount}/{layersInCat.length}
+                  </span>
+                  <span className="text-slate-400 text-xs transform transition-transform duration-200">
+                    {isCollapsed ? '►' : '▼'}
+                  </span>
+                </div>
+              </button>
+
+              {/* LISTA DE CAPAS */}
+              {!isCollapsed && (
+                <div className="p-1.5 space-y-1">
+                  {layersInCat.map((layer) => {
+                    const isActive = !!activeLayers[layer.id];
+
+                    return (
+                      <button
+                        type="button"
+                        key={layer.id}
+                        onClick={(e) => handleToggle(e, layer.id)}
+                        className={`w-full text-left group flex items-center justify-between p-2 rounded-md border cursor-pointer transition-all duration-150 ${
+                          isActive
+                            ? 'bg-cyan-950/40 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.15)]'
+                            : 'bg-slate-900/30 border-slate-800/80 hover:bg-slate-800/50 hover:border-slate-700'
+                        }`}
+                      >
+                        {/* INFORMACIÓN DE CAPA */}
+                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                          <span className="text-base group-hover:scale-110 transition-transform">
+                            {layer.icon}
+                          </span>
+                          <div className="truncate">
+                            <div
+                              className={`text-xs font-mono font-medium truncate transition-colors ${
+                                isActive ? 'text-cyan-200 font-bold' : 'text-slate-400 group-hover:text-slate-200'
+                              }`}
+                            >
+                              {layer.label}
+                            </div>
+                            <div className="text-[9px] font-mono text-slate-500 truncate">
+                              {layer.description}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* TOGGLE INTERRUPTOR NEÓN */}
+                        <div className="relative inline-flex items-center shrink-0 pointer-events-none">
+                          <div
+                            className={`w-8 h-4 rounded-full transition-colors duration-200 ease-in-out border ${
+                              isActive
+                                ? 'bg-cyan-500/30 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]'
+                                : 'bg-slate-800 border-slate-700'
+                            }`}
+                          >
+                            <div
+                              className={`w-3 h-3 rounded-full transform transition-transform duration-200 ease-in-out mt-[1px] ${
+                                isActive
+                                  ? 'translate-x-4 bg-cyan-400 shadow-[0_0_6px_#22d3ee]'
+                                  : 'translate-x-0.5 bg-slate-500'
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {distanceKm !== null && (
-        <div className="bg-slate-950 p-2.5 rounded-lg border border-sky-500/30 text-center">
-          <div className="text-[10px] text-slate-400 uppercase">Distancia Ortodrómica Real</div>
-          <div className="text-lg font-bold text-sky-400 font-mono">
-            {distanceKm.toLocaleString()} km
-          </div>
-        </div>
-      )}
-    </div>
+      {/* FOOTER */}
+      <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-400 shrink-0">
+        <span className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          ESTACIONALIDAD: ACTIVA
+        </span>
+        <span className="text-slate-500">PROYECCIÓN POLAR</span>
+      </div>
+    </aside>
   );
 }

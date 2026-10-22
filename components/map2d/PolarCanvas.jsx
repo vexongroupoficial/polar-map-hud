@@ -24,8 +24,10 @@ import { drawRadarSweep } from './layers/drawRadarSweep';
 import { drawAirports } from './layers/drawAirports';
 import { drawAnomalies } from './layers/drawAnomalies';
 import { drawWindCurrents } from './layers/drawWindCurrents';
+import { drawGeodesicRoutes } from './layers/drawGeodesicRoutes';
+import CitySearch from '../ui/CitySearch';
 
-// Módulos independientes (Importaciones limpias)
+// Módulos independientes
 import { useGeoData } from './hooks/useGeoData';
 import {
   getCountryAndContinentAtPoint,
@@ -54,8 +56,12 @@ export default function PolarCanvas({
   const [internalZoom, setInternalZoom] = useState(zoom);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [mousePos, setMousePos] = useState({
-    lat: 0, lon: 0, rho: 0, theta: 0,
-    country: 'Mar Abierto', continent: 'Océano Global'
+    lat: 0,
+    lon: 0,
+    rho: 0,
+    theta: 0,
+    country: 'Mar Abierto',
+    continent: 'Océano Global',
   });
 
   // 3. Carga limpia de Datos GeoJSON mediante Hook
@@ -123,14 +129,54 @@ export default function PolarCanvas({
     [setZoom]
   );
 
-  // Manejador Rueda del Ratón
-  const handleWheel = (e) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    updateZoom((prevZoom) => Math.min(Math.max(prevZoom * zoomFactor, 0.8), 10));
+  // CENTRADO FOCAL EN CIUDAD/AEROPUERTO
+  const handleSelectCity = (lat, lon) => {
+    // 1. Ajustar rotación para orientar la longitud frente al observador
+    const targetRotation = (180 - lon + 360) % 360;
+    updateRotation(targetRotation);
+
+    // 2. Calcular posición (x, y) de la ciudad respecto al centro
+    const targetZoom = 2.8;
+    const currentMapRadius = (Math.min(width, height) / 2 - 45) * targetZoom;
+    const radius = currentMapRadius * ((90 - lat) / 180);
+    const thetaRad = ((lon + (targetRotation - 180)) * Math.PI) / 180;
+
+    const targetX = radius * Math.sin(thetaRad);
+    const targetY = radius * Math.cos(thetaRad);
+
+    // 3. Mover offset para encuadrar la ubicación exactamente en el centro de la pantalla
+    setOffset({
+      x: -targetX,
+      y: -targetY,
+    });
+
+    updateZoom(targetZoom);
   };
 
-  // Manejadores Pointer
+  // MANEJADOR DE RUEDA DE MOUSE (ZOOM FOCAL)
+  const handleWheel = (e) => {
+    e.preventDefault();
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left - width / 2;
+    const mouseY = e.clientY - rect.top - height / 2;
+
+    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
+    const nextZoom = Math.min(Math.max(internalZoom * zoomFactor, 0.8), 10);
+
+    const scaleChange = nextZoom / internalZoom;
+    setOffset((prevOffset) => ({
+      x: mouseX - (mouseX - prevOffset.x) * scaleChange,
+      y: mouseY - (mouseY - prevOffset.y) * scaleChange,
+    }));
+
+    updateZoom(nextZoom);
+  };
+
+  // MANEJADORES POINTER
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -177,14 +223,19 @@ export default function PolarCanvas({
     let thetaDeg = (thetaRad * 180) / Math.PI;
 
     let lon = thetaDeg - (internalRotation - 180);
-    lon = ((lon + 180) % 360 + 360) % 360 - 180;
+    lon = (((lon + 180) % 360) + 360) % 360 - 180;
 
     const geoInfo = getCountryAndContinentAtPoint(lat, lon, countriesData);
 
     setMousePos({
-      lat, lon, rho, theta: thetaRad,
-      canvasX: currentX, canvasY: currentY,
-      country: geoInfo.country, continent: geoInfo.continent,
+      lat,
+      lon,
+      rho,
+      theta: thetaRad,
+      canvasX: currentX,
+      canvasY: currentY,
+      country: geoInfo.country,
+      continent: geoInfo.continent,
     });
 
     if (isDraggingRef.current) {
@@ -215,30 +266,37 @@ export default function PolarCanvas({
   const handleResetOffset = () => {
     setOffset({ x: 0, y: 0 });
     updateRotation(180);
-    updateZoom(1.00);
+    updateZoom(1.0);
   };
 
-  const handleClick = (e) => {
-    if (!activeLayers?.measure || typeof onAddMeasurePoint !== 'function' || isDraggingRef.current) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const handleClick = (e) => {
+      // Verificar que la capa de medición esté activa
+      if (!activeLayers?.measure) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const centerX = width / 2 + offset.x;
-    const centerY = height / 2 + offset.y;
-    const clickX = e.clientX - rect.left - centerX;
-    const clickY = e.clientY - rect.top - centerY;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const rho = Math.hypot(clickX, clickY);
-    if (rho > mapRadius) return;
+      const rect = canvas.getBoundingClientRect();
+      const centerX = width / 2 + offset.x;
+      const centerY = height / 2 + offset.y;
 
-    const lat = 90 - (rho / mapRadius) * 180;
-    let thetaRad = Math.atan2(clickX, clickY);
-    let lon = (thetaRad * 180) / Math.PI - (internalRotation - 180);
-    lon = ((lon + 180) % 360 + 360) % 360 - 180;
+      const clickX = e.clientX - rect.left - centerX;
+      const clickY = e.clientY - rect.top - centerY;
 
-    onAddMeasurePoint({ lat, lon });
-  };
+      const rho = Math.hypot(clickX, clickY);
+      if (rho > mapRadius) return;
+
+      // Convertir (X, Y) del Canvas de vuelta a Latitud y Longitud
+      const lat = 90 - (rho / mapRadius) * 180;
+      let thetaRad = Math.atan2(clickX, clickY);
+      let lon = (thetaRad * 180) / Math.PI - (internalRotation - 180);
+      lon = (((lon + 180) % 360) + 360) % 360 - 180;
+
+      // Invocar el callback recibido desde el componente padre
+      if (typeof onAddMeasurePoint === 'function') {
+        onAddMeasurePoint({ lat, lon });
+      }
+    };
 
   // 5. Bucle de Renderizado
   useEffect(() => {
@@ -290,6 +348,7 @@ export default function PolarCanvas({
       drawWindCurrents(ctx, jetStreamsData, activeLayers, centerX, centerY, mapRadius, internalRotation);
       drawAnomalies(ctx, anomaliesData, activeLayers, centerX, centerY, mapRadius, internalRotation);
       drawAirports(ctx, airportsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+      drawGeodesicRoutes(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
 
       if (activeLayers?.sunlight) drawSunlight(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
       if (activeLayers?.sunlight || activeLayers?.moon || activeLayers?.analemma) drawAstronomy(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
@@ -306,9 +365,21 @@ export default function PolarCanvas({
       if (animId) cancelAnimationFrame(animId);
     };
   }, [
-    width, height, activeLayers, mapRadius,
-    countriesData, reliefData, tectonicsData, airportsData, anomaliesData, jetStreamsData,
-    measurePoints, internalRotation, internalZoom, offset, mousePos,
+    width,
+    height,
+    activeLayers,
+    mapRadius,
+    countriesData,
+    reliefData,
+    tectonicsData,
+    airportsData,
+    anomaliesData,
+    jetStreamsData,
+    measurePoints,
+    internalRotation,
+    internalZoom,
+    offset,
+    mousePos,
   ]);
 
   return (
@@ -316,6 +387,8 @@ export default function PolarCanvas({
       ref={containerRef}
       className="relative w-full h-full flex justify-center items-center bg-slate-950 p-1 overflow-hidden select-none"
     >
+      <CitySearch onSelectLocation={handleSelectCity} airportsData={airportsData} />
+
       <HUDTelemetryOverlay
         rotation={internalRotation}
         zoom={internalZoom}
