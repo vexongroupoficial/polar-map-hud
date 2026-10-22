@@ -1,27 +1,90 @@
 import { latLonToPolar } from '@/lib/polarMath';
 
-// Centroides y desplazamientos optimizados para etiquetas continentales
+// Lista principal de Continentes con centroides geográficos
 const CONTINENT_LABELS = [
-  { name: 'AMÉRICA DEL NORTE', lat: 40, lon: -100 },
+  { name: 'AMÉRICA DEL NORTE', lat: 42, lon: -100 },
   { name: 'AMÉRICA DEL SUR', lat: -15, lon: -60 },
-  { name: 'EUROPA', lat: 48, lon: 15 },
-  { name: 'ÁFRICA', lat: 5, lon: 20 },
-  { name: 'ASIA', lat: 45, lon: 85 },
-  { name: 'OCEANÍA', lat: -22, lon: 135 },
-  { name: 'ANTÁRTIDA', lat: -82, lon: -45 },
+  { name: 'EUROPA', lat: 50, lon: 15 },
+  { name: 'ÁFRICA', lat: 2, lon: 20 },
+  { name: 'ASIA', lat: 45, lon: 90 },
+  { name: 'OCEANÍA', lat: -25, lon: 135 },
+  { name: 'ANTÁRTIDA', lat: -80, lon: 0 },
 ];
 
 export function drawLabels(ctx, countriesData, activeLayers, centerX, centerY, mapRadius, rotation, zoom) {
   if (!activeLayers?.labels) return;
 
-  // --- 1. ETIQUETAS DE CONTINENTES ---
+  // =========================================================================
+  // 1. ETIQUETAS DE CONTINENTES (Siempre visibles, destacan en zoom lejano)
+  // =========================================================================
   if (activeLayers?.continentLabels !== false) {
-    ctx.fillStyle = '#38bdf8'; // Azul cian brillante
+    ctx.save();
+    ctx.fillStyle = '#38bdf8'; // Cian brillante
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    const fontContSize = Math.min(Math.max(10, 12 * Math.sqrt(zoom)), 20);
+    ctx.font = `bold ${fontContSize}px monospace`;
+    ctx.shadowColor = '#020617';
+    ctx.shadowBlur = 6;
+
     CONTINENT_LABELS.forEach((cont) => {
       const { x, y, thetaRad } = latLonToPolar(cont.lat, cont.lon, mapRadius, rotation);
+      const drawX = centerX + x;
+      const drawY = centerY + y;
+
+      ctx.save();
+      ctx.translate(drawX, drawY);
+
+      // Rotación adaptativa para lectura horizontal/radial
+      let angle = thetaRad + Math.PI / 2;
+      if (angle > Math.PI / 2 && angle < (3 * Math.PI) / 2) {
+        angle += Math.PI;
+      }
+      ctx.rotate(angle);
+
+      ctx.fillText(cont.name, 0, 0);
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+
+  // =========================================================================
+  // 2. ETIQUETAS DE PAÍSES (Aparecen limpiamente con zoom >= 1.4x)
+  // =========================================================================
+  if (countriesData?.features && zoom >= 1.4) {
+    ctx.save();
+    ctx.fillStyle = '#f8fafc'; // Blanco / Gris claro
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const fontCountrySize = Math.min(Math.max(9, 7.5 * Math.sqrt(zoom)), 15);
+    ctx.font = `bold ${fontCountrySize}px monospace`;
+    ctx.shadowColor = '#020617';
+    ctx.shadowBlur = 5;
+
+    countriesData.features.forEach((feature) => {
+      const props = feature.properties || {};
+      const name = props.name || props.ADMIN || props.NAME;
+      if (!name) return;
+
+      // Obtener latitud y longitud del centroide o propiedad
+      let lat = props.label_y ?? props.LAT;
+      let lon = props.label_x ?? props.LON;
+
+      // Fallback a Bounding Box si no tiene propiedad LAT/LON
+      if (lat === undefined || lon === undefined) {
+        const bbox = feature.bbox;
+        if (bbox && bbox.length >= 4) {
+          lon = (bbox[0] + bbox[2]) / 2;
+          lat = (bbox[1] + bbox[3]) / 2;
+        } else {
+          return;
+        }
+      }
+
+      const { x, y, thetaRad } = latLonToPolar(lat, lon, mapRadius, rotation);
       const drawX = centerX + x;
       const drawY = centerY + y;
 
@@ -35,64 +98,10 @@ export function drawLabels(ctx, countriesData, activeLayers, centerX, centerY, m
       }
       ctx.rotate(angle);
 
-      const fontSize = Math.max(9, Math.min(16, 11 * Math.sqrt(zoom)));
-      ctx.font = `bold ${fontSize}px sans-serif`;
-
-      // Sombra oscura para destacar sobre masa continental y gráticual
-      ctx.shadowColor = '#020617';
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
-
-      ctx.fillText(cont.name, 0, 0);
+      ctx.fillText(name.toUpperCase(), 0, 0);
       ctx.restore();
     });
-  }
 
-  // --- 2. ETIQUETAS DE PAÍSES (Aparecen al acercarse con Zoom >= 1.5x) ---
-  if (countriesData && zoom >= 1.5) {
-    ctx.fillStyle = '#f1f5f9';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    countriesData.features.forEach((feature) => {
-      const name = feature.properties?.ADMIN || feature.properties?.NAME || '';
-      const bbox = feature.bbox;
-
-      let lat, lon;
-      if (bbox && bbox.length >= 4) {
-        lon = (bbox[0] + bbox[2]) / 2;
-        lat = (bbox[1] + bbox[3]) / 2;
-      } else if (feature.geometry?.coordinates) {
-        const coords = feature.geometry.type === 'Polygon'
-          ? feature.geometry.coordinates[0][0]
-          : feature.geometry.coordinates[0][0][0];
-        lon = coords[0];
-        lat = coords[1];
-      }
-
-      if (lat === undefined || lon === undefined) return;
-
-      const { x, y, thetaRad } = latLonToPolar(lat, lon, mapRadius, rotation);
-      const drawX = centerX + x;
-      const drawY = centerY + y;
-
-      ctx.save();
-      ctx.translate(drawX, drawY);
-
-      let angle = thetaRad + Math.PI / 2;
-      if (angle > Math.PI / 2 && angle < (3 * Math.PI) / 2) {
-        angle += Math.PI;
-      }
-      ctx.rotate(angle);
-
-      const fontSize = Math.max(8, Math.min(12, 8.5 * Math.sqrt(zoom - 0.5)));
-      ctx.font = `${fontSize}px sans-serif`;
-
-      ctx.shadowColor = '#020617';
-      ctx.shadowBlur = 4;
-      ctx.fillText(name, 0, 0);
-      ctx.restore();
-    });
+    ctx.restore();
   }
 }

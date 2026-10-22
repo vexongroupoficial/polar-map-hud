@@ -25,5 +25,16 @@
     "@tailwindcss/postcss": "^4.3.3",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3"
+  },
+
+"overrides": {
+  "@react-three/drei": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
+  "@react-three/fiber": {
+    "react": "$react",
+    "react-dom": "$react-dom"
   }
+}
 }

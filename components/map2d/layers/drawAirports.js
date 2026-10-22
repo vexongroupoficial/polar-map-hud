@@ -37,17 +37,18 @@ export function drawAirports(ctx, airportsData, activeLayers, centerX, centerY, 
 
     // Dibujar Nombres y Etiqueta si el zoom lo permite o es un aeropuerto principal
     if (zoom > 1.2) {
-      ctx.font = '9px monospace';
+      const fontSize = Math.min(Math.max(10, 8 * Math.sqrt(zoom)), 16);
+      ctx.font = `bold ${fontSize}px monospace`;
       ctx.fillStyle = '#e0f2fe';
-      ctx.shadowColor = '#000';
-      ctx.shadowBlur = 3;
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 4;
 
       let labelText = iata ? `[${iata}] ${name}` : name;
       if (location && zoom > 2.2) {
         labelText += ` (${location})`;
       }
 
-      ctx.fillText(labelText, x + 6, y + 3);
+      ctx.fillText(labelText, x + fontSize / 2, y + 3);
     }
   });
 
