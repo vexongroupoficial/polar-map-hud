@@ -4,37 +4,46 @@ import { useState } from 'react';
 import PolarCanvas from '@/components/map2d/PolarCanvas';
 import PolarScene3D from '@/components/map3d/PolarScene3D';
 import Sidebar from '@/components/ui/Sidebar';
+import { INITIAL_ACTIVE_LAYERS } from '@/lib/mapLayers';
 
 export default function Home() {
+  // Estado único de capas inicializado desde la librería de capas
+  const [layers, setLayers] = useState(INITIAL_ACTIVE_LAYERS);
+
+  // Estado de navegación y orientación de la estación de mando
+  const INITIAL_ROTATION = 180; // Orientación con Greenwich hacia abajo (UTC 0)
+  const INITIAL_ZOOM = 1.00;
+  const INITIAL_OFFSET = { x: 0, y: 0 };
+
+  const [offset, setOffset] = useState(INITIAL_OFFSET);
   const [viewMode, setViewMode] = useState('2D');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const [rotation, setRotation] = useState(0);
-  const [zoom, setZoom] = useState(1);
-const [layers, setLayers] = useState({
-  continents: true,    // 🗺️ Continentes y masa terrestre WGS84
-  labels: true,        // 🏷️ Nombres de Países y Ciudades
-  oceans: true,        // 🌊 Rotulación Náutica de Océanos
-  relief: true,        // 🏔️ Topografía y Relieve
-  tectonics: false,    // 🌋 Placas Tectónicas
-  measure: false,      // 📏 Herramienta de Medición Geodésica
-  ancientSites: true,  // 🔺 Pirámides y Sitios Antiguos
-  greatCircle: true,   // ✨ Gran Círculo Antiguo (Eje Dorado)
-  harmonicAngles: true,// 📐 Ángulos Armónicos (30°, 60°, 90°, 120°)
-  radarSweep: true,    // 📡 Escáner Radar Táctico
-  timeZones: true,     // 🕒 Husos UTC
-  graticule: true,     // 🌐 Meridianos y Paralelos
-  sunlight: true,      // ☀️ Iluminación Solar Día/Noche
-  moon: true,          // 🌙 Fases y Posición Lunar
-});
+  const [rotation, setRotation] = useState(INITIAL_ROTATION);
+  const [zoom, setZoom] = useState(INITIAL_ZOOM);
 
-  const toggleLayer = (layerName) => {
-    setLayers((prev) => ({ ...prev, [layerName]: !prev[layerName] }));
+  // Función para restaurar la vista al punto inicial
+  const handleResetView = () => {
+    setOffset(INITIAL_OFFSET);
+    setRotation(INITIAL_ROTATION);
+    setZoom(INITIAL_ZOOM);
   };
 
+  // Alternador dinámico de capas
+  const toggleLayer = (layerName) => {
+    setLayers((prev) => ({
+      ...prev,
+      [layerName]: !prev[layerName],
+    }));
+  };
+
+  // Aplicar presets de capas rápidas
   const applyPreset = (presetLayers) => {
-    setLayers((prev) => ({ ...prev, ...presetLayers }));
+    setLayers((prev) => ({
+      ...prev,
+      ...presetLayers,
+    }));
   };
 
   return (
@@ -87,7 +96,9 @@ const [layers, setLayers] = useState({
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           layers={layers}
+          activeLayers={layers}
           toggleLayer={toggleLayer}
+          onToggleLayer={toggleLayer}
           onApplyPreset={applyPreset}
           rotation={rotation}
           zoom={zoom}

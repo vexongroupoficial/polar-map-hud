@@ -1,0 +1,39 @@
+﻿{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Triángulo de las Bermudas",
+        "type": "anomalous_zone",
+        "code": "BERMUDA_TRIANGLE"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.1918, 25.7617],
+          [-64.6722, 32.3058],
+          [-66.0636, 18.4655],
+          [-80.1918, 25.7617]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Mar del Diablo / Triángulo del Dragón",
+        "type": "anomalous_zone",
+        "code": "DEVILS_SEA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [139.6503, 35.6762],
+          [145.0000, 20.0000],
+          [121.5654, 25.0330],
+          [139.6503, 35.6762]
+        ]]
+      }
+    }
+  ]
+}

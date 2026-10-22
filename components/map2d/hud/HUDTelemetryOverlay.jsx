@@ -98,6 +98,21 @@ export default function HUDTelemetryOverlay({
               {mousePos.lon !== null && !isNaN(mousePos.lon) ? `${mousePos.lon.toFixed(4)}° E` : '--'}
             </span>
           </div>
+          {/* Sección de Telemetría Cartográfica Táctica */}
+          <div className="border-t border-cyan-500/30 pt-2 space-y-1.5 text-[10px] font-mono transition-all duration-150">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">CONTINENTE:</span>
+              <span className="text-sky-300 font-bold tracking-wide truncate max-w-[150px] bg-sky-950/40 px-1.5 py-0.5 rounded border border-sky-800/40">
+                {mousePos?.continent || 'Océano Global'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400">REGIÓN / PAÍS:</span>
+              <span className="text-amber-300 font-bold tracking-wide truncate max-w-[150px] bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
+                {mousePos?.country || 'Mar Abierto'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

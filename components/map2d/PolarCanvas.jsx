@@ -20,8 +20,68 @@ import { drawAstronomy } from './layers/drawAstronomy';
 import { drawHarmonicAngles } from './layers/drawHarmonicAngles';
 import { drawRadarSweep } from './layers/drawRadarSweep';
 
+// Nuevas capas
+import { drawAirports } from './layers/drawAirports';
+import { drawAnomalies } from './layers/drawAnomalies';
+import { drawWindCurrents } from './layers/drawWindCurrents';
+
 /**
- * Dibuja la mira/retícula de apuntado sobre el ratón (sin haz de radar duplicado)
+ * Algoritmo Ray-Casting para detectar si un punto [lng, lat] está dentro de un polígono GeoJSON
+ */
+function pointInPolygon(point, polygonCoordinates) {
+  const [x, y] = point;
+  let inside = false;
+
+  for (let i = 0, j = polygonCoordinates.length - 1; i < polygonCoordinates.length; j = i++) {
+    const [xi, yi] = polygonCoordinates[i];
+    const [xj, yj] = polygonCoordinates[j];
+
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Realiza la búsqueda espacial en los datos GeoJSON de los países
+ */
+function getCountryAndContinentAtPoint(lat, lon, countriesGeoJSON) {
+  if (!countriesGeoJSON || !countriesGeoJSON.features) {
+    return { country: "Mar Abierto / Océano", continent: "Cuenca Global" };
+  }
+
+  const point = [lon, lat];
+
+  for (const feature of countriesGeoJSON.features) {
+    const geometry = feature.geometry;
+    const properties = feature.properties || {};
+    const countryName = properties.name || properties.ADMIN || properties.NAME || "Territorio Desconocido";
+    const continentName = properties.continent || properties.REGION_UN || properties.CONTINENT || "Masa Continental";
+
+    if (!geometry) continue;
+
+    if (geometry.type === "Polygon") {
+      for (const ring of geometry.coordinates) {
+        if (pointInPolygon(point, ring)) {
+          return { country: countryName, continent: continentName };
+        }
+      }
+    } else if (geometry.type === "MultiPolygon") {
+      for (const polygon of geometry.coordinates) {
+        for (const ring of polygon) {
+          if (pointInPolygon(point, ring)) {
+            return { country: countryName, continent: continentName };
+          }
+        }
+      }
+    }
+  }
+
+  return { country: "Mar Abierto / Océano", continent: "Océano Global" };
+}
+
+/**
+ * Dibuja la mira táctica sobre el cursor
  */
 function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
   if (!mousePos || mousePos.canvasX === undefined || mousePos.canvasY === undefined) return;
@@ -32,32 +92,63 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
 
   if (dist <= mapRadius) {
     ctx.save();
-    // Anillo de enfoque
     ctx.beginPath();
-    ctx.arc(mx, my, 10, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+    ctx.arc(mx, my, 8, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 2]);
     ctx.stroke();
 
-    // Cruz carmesí
     ctx.beginPath();
-    ctx.moveTo(mx - 14, my); ctx.lineTo(mx - 4, my);
-    ctx.moveTo(mx + 4, my); ctx.lineTo(mx + 14, my);
-    ctx.moveTo(mx, my - 14); ctx.lineTo(mx, my - 4);
-    ctx.moveTo(mx, my + 4); ctx.lineTo(mx, my + 14);
+    ctx.moveTo(mx - 12, my); ctx.lineTo(mx - 4, my);
+    ctx.moveTo(mx + 4, my); ctx.lineTo(mx + 12, my);
+    ctx.moveTo(mx, my - 12); ctx.lineTo(mx, my - 4);
+    ctx.moveTo(mx, my + 4); ctx.lineTo(mx, my + 12);
     ctx.strokeStyle = '#ef4444';
     ctx.lineWidth = 1.2;
     ctx.setLineDash([]);
     ctx.stroke();
 
+    ctx.beginPath();
+    ctx.arc(mx, my, 2, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff2222';
+    ctx.shadowColor = '#ef4444';
+    ctx.shadowBlur = 6;
+    ctx.fill();
     ctx.restore();
   }
 }
 
+/**
+ * Dibuja el Ecuador y los Trópicos
+ */
+function drawTropicsAndEquatorLayer(ctx, centerX, centerY, maxRadius) {
+  const parallels = [
+    { name: 'CÁNCER (+23.43°)', lat: 23.43, color: 'rgba(56, 189, 248, 0.5)', dash: [4, 4] },
+    { name: 'ECUADOR (0°)', lat: 0, color: 'rgba(239, 68, 68, 0.9)', dash: [] },
+    { name: 'CAPRICORNIO (-23.43°)', lat: -23.43, color: 'rgba(56, 189, 248, 0.5)', dash: [4, 4] }
+  ];
+
+  parallels.forEach(p => {
+    const radius = maxRadius * ((90 - p.lat) / 180);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = p.color;
+    ctx.lineWidth = p.lat === 0 ? 1.5 : 1;
+    ctx.setLineDash(p.dash);
+    ctx.stroke();
+
+    ctx.fillStyle = p.color;
+    ctx.font = '9px monospace';
+    ctx.fillText(p.name, centerX + 6, centerY - radius - 4);
+    ctx.restore();
+  });
+}
+
 export default function PolarCanvas({
   activeLayers,
-  rotation = 0,
+  rotation = 180,
   setRotation,
   zoom = 1,
   setZoom,
@@ -68,7 +159,33 @@ export default function PolarCanvas({
   const canvasRef = useRef(null);
 
   const [dimensions, setDimensions] = useState({ width: 800, height: 800 });
-  const [mousePos, setMousePos] = useState({ lat: 0, lon: 0, rho: 0, theta: 0 });
+  const [mousePos, setMousePos] = useState({ 
+    lat: 0, lon: 0, rho: 0, theta: 0, 
+    country: 'Mar Abierto', continent: 'Océano Global' 
+  });
+
+  const { width, height } = dimensions;
+
+  const [internalRotation, setInternalRotation] = useState(rotation);
+  const [internalZoom, setInternalZoom] = useState(zoom);
+
+  // Datos GeoJSON
+  const [countriesData, setCountriesData] = useState(null);
+  const [reliefData, setReliefData] = useState(null);
+  const [tectonicsData, setTectonicsData] = useState(null);
+  const [airportsData, setAirportsData] = useState(null);
+  const [anomaliesData, setAnomaliesData] = useState(null);
+  const [jetStreamsData, setJetStreamsData] = useState(null);
+
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  const mapRadius = (Math.min(width, height) / 2 - 45) * internalZoom;
+
+  const isDraggingRef = useRef(false);
+  const isPanningRef = useRef(false);
+  const rotateStartAngleRef = useRef(0);
+  const initialRotationRef = useRef(0);
+  const panStartRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -88,25 +205,6 @@ export default function PolarCanvas({
     return () => resizeObserver.disconnect();
   }, []);
 
-  const { width, height } = dimensions;
-
-  const [internalRotation, setInternalRotation] = useState(rotation);
-  const [internalZoom, setInternalZoom] = useState(zoom);
-
-  const [countriesData, setCountriesData] = useState(null);
-  const [reliefData, setReliefData] = useState(null);
-  const [tectonicsData, setTectonicsData] = useState(null);
-
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-  const mapRadius = (Math.min(width, height) / 2 - 45) * internalZoom;
-
-  const isDraggingRef = useRef(false);
-  const isPanningRef = useRef(false);
-  const rotateStartAngleRef = useRef(0);
-  const initialRotationRef = useRef(0);
-  const panStartRef = useRef({ x: 0, y: 0 });
-
   useEffect(() => setInternalRotation(rotation), [rotation]);
   useEffect(() => setInternalZoom(zoom), [zoom]);
 
@@ -121,58 +219,6 @@ export default function PolarCanvas({
     },
     [setRotation]
   );
-
-  /**
- * Dibuja el puntal rojo táctico en la posición exacta del ratón
- */
-function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
-  if (!mousePos || mousePos.canvasX === undefined || mousePos.canvasY === undefined) return;
-
-  const mx = mousePos.canvasX;
-  const my = mousePos.canvasY;
-  const dist = Math.hypot(mx - centerX, my - centerY);
-
-  // Solo dibujar el puntal si el cursor está sobre la superficie del mapa
-  if (dist <= mapRadius) {
-    ctx.save();
-
-    // 1. Anillo Neón de Enfoque Cian (Suave)
-    ctx.beginPath();
-    ctx.arc(mx, my, 8, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 2]);
-    ctx.stroke();
-
-    // 2. Retícula Táctica Carmesí (Cruz de Precisión)
-    ctx.beginPath();
-    ctx.moveTo(mx - 12, my); ctx.lineTo(mx - 4, my);
-    ctx.moveTo(mx + 4, my); ctx.lineTo(mx + 12, my);
-    ctx.moveTo(mx, my - 12); ctx.lineTo(mx, my - 4);
-    ctx.moveTo(mx, my + 4); ctx.lineTo(mx, my + 12);
-    ctx.strokeStyle = '#ef4444'; // Rojo carmesí
-    ctx.lineWidth = 1.2;
-    ctx.setLineDash([]);
-    ctx.stroke();
-
-    // 3. PUNTAL ROJO RESPLANDECIENTE (Punto central táctico)
-    // Halo difuso rojo
-    ctx.beginPath();
-    ctx.arc(mx, my, 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
-    ctx.fill();
-
-    // Núcleo rojo brillante
-    ctx.beginPath();
-    ctx.arc(mx, my, 2, 0, Math.PI * 2);
-    ctx.fillStyle = '#ff2222';
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 6;
-    ctx.fill();
-
-    ctx.restore();
-  }
-}
 
   const updateZoom = useCallback(
     (valOrFn) => {
@@ -201,21 +247,22 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
       .then((res) => res.json())
       .then((data) => setTectonicsData(data))
       .catch((err) => console.error('Error cargando placas tectónicas:', err));
+
+    fetch('/data/geojson/airports.geojson')
+      .then((res) => res.json())
+      .then((data) => setAirportsData(data))
+      .catch((err) => console.error('Error cargando aeropuertos:', err));
+
+    fetch('/data/geojson/anomalies.geojson')
+      .then((res) => res.json())
+      .then((data) => setAnomaliesData(data))
+      .catch((err) => console.error('Error cargando anomalías:', err));
+
+    fetch('/data/geojson/jet_streams.geojson')
+      .then((res) => res.json())
+      .then((data) => setJetStreamsData(data))
+      .catch((err) => console.error('Error cargando vientos:', err));
   }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const handleWheelNative = (e) => {
-      e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
-      updateZoom((prev) => prev * zoomFactor);
-    };
-
-    canvas.addEventListener('wheel', handleWheelNative, { passive: false });
-    return () => canvas.removeEventListener('wheel', handleWheelNative);
-  }, [updateZoom]);
 
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
@@ -255,18 +302,28 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
 
     const dx = currentX - centerX;
     const dy = currentY - centerY;
-    const rho = Math.sqrt(dx * dx + dy * dy);
-    const theta = Math.atan2(-dx, -dy);
+    const rho = Math.hypot(dx, dy);
+
+    if (rho > mapRadius) return;
+
     const lat = 90 - (rho / mapRadius) * 180;
-    let lon = (theta * 180) / Math.PI - internalRotation;
+    let thetaRad = Math.atan2(dx, dy);
+    let thetaDeg = (thetaRad * 180) / Math.PI;
+
+    let lon = thetaDeg - (internalRotation - 180);
+    lon = ((lon + 180) % 360 + 360) % 360 - 180;
+
+    const geoInfo = getCountryAndContinentAtPoint(lat, lon, countriesData);
 
     setMousePos({
       lat,
       lon,
       rho,
-      theta,
+      theta: thetaRad,
       canvasX: currentX,
       canvasY: currentY,
+      country: geoInfo.country,
+      continent: geoInfo.continent,
     });
 
     if (isDraggingRef.current) {
@@ -295,7 +352,12 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
   };
 
   const handleContextMenu = (e) => e.preventDefault();
-  const handleResetOffset = () => setOffset({ x: 0, y: 0 });
+
+  const handleResetOffset = () => {
+    setOffset({ x: 0, y: 0 });
+    updateRotation(180);
+    updateZoom(1.00);
+  };
 
   const handleClick = (e) => {
     if (!activeLayers?.measure || typeof onAddMeasurePoint !== 'function' || isDraggingRef.current) return;
@@ -308,17 +370,18 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
     const clickX = e.clientX - rect.left - centerX;
     const clickY = e.clientY - rect.top - centerY;
 
-    const rho = Math.sqrt(clickX * clickX + clickY * clickY);
+    const rho = Math.hypot(clickX, clickY);
     if (rho > mapRadius) return;
 
     const lat = 90 - (rho / mapRadius) * 180;
-    const thetaRad = Math.atan2(-clickX, -clickY);
-    let lon = (thetaRad * 180) / Math.PI - internalRotation;
+    let thetaRad = Math.atan2(clickX, clickY);
+    let lon = (thetaRad * 180) / Math.PI - (internalRotation - 180);
+    lon = ((lon + 180) % 360 + 360) % 360 - 180;
 
     onAddMeasurePoint({ lat, lon });
   };
 
-  // LOOP DE RENDERIZADO UNIFICADO
+  // RENDER FRAME
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -351,20 +414,25 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
       if (activeLayers?.currents) {
         drawCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
       }
-      if (activeLayers?.continents) {
+      if (activeLayers?.continents && countriesData) {
         drawContinents(ctx, countriesData, centerX, centerY, mapRadius, internalRotation, internalZoom);
       }
-      if (activeLayers?.relief) {
+      if (activeLayers?.relief && reliefData) {
         drawRelief(ctx, reliefData, centerX, centerY, mapRadius, internalRotation, internalZoom);
       }
 
-      // C. ESCÁNER RADAR TÁCTICO (Única llamada controlada)
+      // C. ESCÁNER RADAR TÁCTICO
       drawRadarSweep(ctx, activeLayers, centerX, centerY, mapRadius);
 
       // D. Red Geodésica, Husos Horarios y Geometría
-      if (activeLayers?.graticule || activeLayers?.ecuador || activeLayers?.tropics) {
+      if (activeLayers?.graticule) {
         drawGraticule(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
       }
+      
+      if (activeLayers?.equatorAndTropics) {
+        drawTropicsAndEquatorLayer(ctx, centerX, centerY, mapRadius);
+      }
+
       if (activeLayers?.timeZones) {
         drawTimeZones(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
       }
@@ -373,14 +441,19 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
       drawGreatCircle(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
       drawAncientSites(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
 
-      if (activeLayers?.tectonics) {
+      if (activeLayers?.tectonics && tectonicsData) {
         drawTectonics(ctx, tectonicsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
       }
-      if (activeLayers?.labels) {
+      if (activeLayers?.labels && countriesData) {
         drawLabels(ctx, countriesData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
       }
 
-      // E. Astronomía y Medición
+      // E. Nuevas Capas Tácticas
+      drawWindCurrents(ctx, jetStreamsData, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      drawAnomalies(ctx, anomaliesData, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      drawAirports(ctx, airportsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+
+      // F. Astronomía y Medición
       if (activeLayers?.sunlight) {
         drawSunlight(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
       }
@@ -391,11 +464,10 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
         drawMeasurements(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
       }
 
-      // F. Mira Táctica sobre el Cursor
+      // G. Mira Táctica sobre el Cursor
       drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos);
 
-      // Siguiente fotograma de animación
-      animId = requestAnimationFrame(renderFrame);
+      animId = requestAnimationFrame(renderFrame); 
     };
 
     renderFrame();
@@ -411,6 +483,9 @@ function drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos) {
     countriesData,
     reliefData,
     tectonicsData,
+    airportsData,
+    anomaliesData,
+    jetStreamsData,
     measurePoints,
     internalRotation,
     internalZoom,
