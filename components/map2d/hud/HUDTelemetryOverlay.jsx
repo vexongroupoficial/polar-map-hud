@@ -136,15 +136,18 @@ export default function HUDTelemetryOverlay({
           </div>
         </div>
       </div>
+     
 
-      {/* OSCILOSCOPIO INFERIOR DERECHO */}
+      {/* OSCILOSCOPIO INFERIOR DERECHO 
+      {/*
       <div className="absolute bottom-4 right-4 bg-slate-950/85 backdrop-blur-md border border-sky-500/30 p-2.5 rounded-xl shadow-2xl min-w-[180px] space-y-1 text-[9px]">
         <div className="text-sky-400 font-bold tracking-wider border-b border-sky-500/20 pb-1 flex items-center justify-between">
           <span>VECTOR FRECUENCIA</span>
           <span className="text-emerald-400 text-[8px] animate-pulse">LIVE</span>
         </div>
         <canvas ref={canvasWaveRef} width={160} height={32} className="w-full h-8 rounded bg-slate-900/60" />
-      </div>
+      </div>*/}
     </div>
+    
   );
 }
