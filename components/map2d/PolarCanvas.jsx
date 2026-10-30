@@ -1,28 +1,15 @@
+// components/map2d/PolarCanvas.jsx
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 
-// ============================================================================
-// 1. COMPONENTES HUD Y CONTROLES INTERACTIVOS
-// ============================================================================
-import Map2DControls from './controls/Map2DControls';
-import HUDTelemetryOverlay from './hud/HUDTelemetryOverlay';
-import TimeControls from './controls/TimeControls';
-import EclipseDetectorHUD from './hud/EclipseDetectorHUD';
-import GrandAlignmentHUD from './hud/GrandAlignmentHUD';
-import CitySearch from '../ui/CitySearch';
-
-// ============================================================================
-// 2. CAPAS DE RENDERIZADO (POR DOMINIO Y PROFUNDIDAD)
-// ============================================================================
-// --- A. Cartografía Base e Hidrografía ---
+// CAPAS CARTOGRÁFICAS Y GEOFÍSICAS
 import { drawOcean } from './layers/drawOcean';
 import { drawOceanLabels } from './layers/drawOceanLabels';
 import { drawContinents } from './layers/drawContinents';
 import { drawRelief } from './layers/drawRelief';
 import { drawLabels } from './layers/drawLabels';
 
-// --- B. Malla Geodésica, Coordenadas y Husos ---
 import { drawGraticule } from './layers/drawGraticule';
 import { drawTimeZones } from './layers/drawTimeZones';
 import { drawCompassRose } from './layers/drawCompassRose';
@@ -31,7 +18,6 @@ import { drawGeodesicRoutes } from './layers/drawGeodesicRoutes';
 import { drawMeasurements } from './layers/drawMeasurements';
 import { drawHarmonicAngles } from './layers/drawHarmonicAngles';
 
-// --- C. Geofísica, Clima y Fenómenos Naturales ---
 import { drawTectonics } from './layers/drawTectonics';
 import { drawAnomalies } from './layers/drawAnomalies';
 import { drawAuroraBorealis } from './layers/drawAuroraBorealis';
@@ -40,14 +26,12 @@ import { drawOceanCurrents } from './layers/drawOceanCurrents';
 import { drawCurrents } from './layers/drawCurrents';
 import { drawRadarSweep } from './layers/drawRadarSweep';
 
-// --- D. Infraestructura, Recursos y Vías de Comunicación ---
 import { drawNaturalResources } from './layers/drawNaturalResources';
 import { drawStrategicCrossings } from './layers/drawStrategicCrossings';
 import { drawAirports } from './layers/drawAirports';
 import { drawMigrationFlows } from './layers/drawMigrationFlows';
 import { drawAncientSites } from './layers/drawAncientSites';
 
-// --- E. Mecánica Celeste, Enoc, Zodíaco y Eras Precesionales ---
 import { drawSunlight } from './layers/drawSunlight';
 import { drawAstronomy } from './layers/drawAstronomy';
 import { drawPlanets } from './layers/drawPlanets';
@@ -56,9 +40,6 @@ import { drawZodiacDecans } from './layers/drawZodiacDecans';
 import { drawConstellations } from './layers/drawConstellations';
 import { drawGrandAlignment } from './layers/drawGrandAlignment';
 
-// ============================================================================
-// 3. UTILIDADES GEODÉSICAS Y DATOS GEOESPACIALES
-// ============================================================================
 import { useGeoData } from './hooks/useGeoData';
 import {
   getCountryAndContinentAtPoint,
@@ -67,31 +48,28 @@ import {
 } from '../../lib/geoUtils';
 
 export default function PolarCanvas({
-  activeLayers,
+  activeLayers = {},
   rotation = 180,
   setRotation,
   zoom = 1,
   setZoom,
+  offset = { x: 0, y: 0 },
+  setOffset,
+  simulatedTime = Date.now(),
   measurePoints = [],
   onAddMeasurePoint,
-  onToggleLayer,
+  onTelemetryUpdate,
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // --------------------------------------------------------------------------
-  // ESTADOS PRINCIPALES DE INTERFAZ Y NAVEGACIÓN
-  // --------------------------------------------------------------------------
   const [dimensions, setDimensions] = useState({ width: 800, height: 800 });
   const { width, height } = dimensions;
 
   const [internalRotation, setInternalRotation] = useState(rotation);
   const [internalZoom, setInternalZoom] = useState(zoom);
-  const [internalNeonMode, setInternalNeonMode] = useState(
-    activeLayers?.neonMode ?? true
-  );
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
 
+  // 🎯 ESTADO LOCAL PARA DIBUJAR LA MIRILLA Y PUNTO ROJO
   const [mousePos, setMousePos] = useState({
     lat: 0,
     lon: 0,
@@ -103,65 +81,16 @@ export default function PolarCanvas({
     continent: 'Océano Global',
   });
 
-  // --------------------------------------------------------------------------
-  // MOTOR KINEMÁTICO TEMPORAL (60 FPS)
-  // --------------------------------------------------------------------------
-  const [simulatedTime, setSimulatedTime] = useState(Date.now());
-  const [isPaused, setIsPaused] = useState(false);
-  const [speedMultiplier, setSpeedMultiplier] = useState(1);
-
-  const simulatedTimeRef = useRef(simulatedTime);
-  const isPausedRef = useRef(isPaused);
-  const speedMultiplierRef = useRef(speedMultiplier);
-  const lastFrameTimeRef = useRef(performance.now());
-
-  // Sincronización continua de referencias mutables
-  useEffect(() => {
-    simulatedTimeRef.current = simulatedTime;
-  }, [simulatedTime]);
-
-  useEffect(() => {
-    isPausedRef.current = isPaused;
-  }, [isPaused]);
-
-  useEffect(() => {
-    speedMultiplierRef.current = speedMultiplier;
-  }, [speedMultiplier]);
-
-  useEffect(() => {
-    if (activeLayers?.neonMode !== undefined) {
-      setInternalNeonMode(activeLayers.neonMode);
-    }
-  }, [activeLayers?.neonMode]);
-
-  const handleToggleNeon = useCallback(() => {
-    setInternalNeonMode((prev) => !prev);
-    if (typeof onToggleLayer === 'function') {
-      onToggleLayer('neonMode');
-    }
-  }, [onToggleLayer]);
-
-  const handleResetRealTime = () => {
-    const now = Date.now();
-    simulatedTimeRef.current = now;
-    setSimulatedTime(now);
-    setSpeedMultiplier(1);
-    setIsPaused(false);
-  };
-
-  // Carga de datos vectoriales geoespaciales
   const {
     countriesData,
     reliefData,
     tectonicsData,
     airportsData,
     anomaliesData,
-    jetStreamsData,
   } = useGeoData();
 
   const mapRadius = (Math.min(width, height) / 2 - 80) * internalZoom;
 
-  // Referencias para eventos táctiles y de ratón (Pinch / Pan / Rotate)
   const isDraggingRef = useRef(false);
   const isPanningRef = useRef(false);
   const rotateStartAngleRef = useRef(0);
@@ -172,9 +101,6 @@ export default function PolarCanvas({
   const initialPinchDistRef = useRef(0);
   const initialPinchZoomRef = useRef(1);
 
-  // --------------------------------------------------------------------------
-  // RESPONSIVIDAD DEL CONTENEDOR CANVAS
-  // --------------------------------------------------------------------------
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -183,7 +109,7 @@ export default function PolarCanvas({
       for (let entry of entries) {
         const { width: w, height: h } = entry.contentRect;
         const size = Math.floor(Math.min(w, h - 10));
-        if (size > 280) setDimensions({ width: size, height: size });
+        if (size > 240) setDimensions({ width: size, height: size });
       }
     });
 
@@ -194,9 +120,6 @@ export default function PolarCanvas({
   useEffect(() => setInternalRotation(rotation), [rotation]);
   useEffect(() => setInternalZoom(zoom), [zoom]);
 
-  // --------------------------------------------------------------------------
-  // HANDLERS DE TRANSFORMACIÓN Y NAVEGACIÓN 2D
-  // --------------------------------------------------------------------------
   const updateRotation = useCallback(
     (valOrFn) => {
       const computeNext = (current) => {
@@ -221,25 +144,12 @@ export default function PolarCanvas({
     [setZoom]
   );
 
-  const handleSelectCity = (lat, lon) => {
-    const targetRotation = (180 - lon + 360) % 360;
-    updateRotation(targetRotation);
-
-    const targetZoom = 2.8;
-    const currentMapRadius = (Math.min(width, height) / 2 - 45) * targetZoom;
-    const radius = currentMapRadius * ((90 - lat) / 180);
-    const thetaRad = ((lon + (targetRotation - 180)) * Math.PI) / 180;
-
-    const targetX = radius * Math.sin(thetaRad);
-    const targetY = radius * Math.cos(thetaRad);
-
-    setOffset({
-      x: -targetX,
-      y: -targetY,
-    });
-
-    updateZoom(targetZoom);
-  };
+  const updateOffset = useCallback(
+    (valOrFn) => {
+      if (typeof setOffset === 'function') setOffset(valOrFn);
+    },
+    [setOffset]
+  );
 
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
@@ -251,11 +161,8 @@ export default function PolarCanvas({
     if (activePointersRef.current.size === 2) {
       isDraggingRef.current = false;
       isPanningRef.current = false;
-
       const points = Array.from(activePointersRef.current.values());
-      const dist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
-
-      initialPinchDistRef.current = dist;
+      initialPinchDistRef.current = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
       initialPinchZoomRef.current = internalZoom;
       return;
     }
@@ -297,8 +204,7 @@ export default function PolarCanvas({
 
       if (initialPinchDistRef.current > 0) {
         const scale = currentDist / initialPinchDistRef.current;
-        const nextZoom = initialPinchZoomRef.current * scale;
-        updateZoom(nextZoom);
+        updateZoom(initialPinchZoomRef.current * scale);
       }
       return;
     }
@@ -322,19 +228,25 @@ export default function PolarCanvas({
 
     const geoInfo = getCountryAndContinentAtPoint(lat, lon, countriesData);
 
-    setMousePos({
+    const updatedPos = {
       lat,
       lon,
       rho,
       theta: thetaRad,
       canvasX: currentX,
       canvasY: currentY,
-      country: geoInfo.country,
-      continent: geoInfo.continent,
-    });
+      country: geoInfo.country || 'Mar Abierto',
+      continent: geoInfo.continent || 'Océano Global',
+    };
+
+    // 🎯 ACTUALIZAR MIRILLA LOCAL Y TELEMETRÍA PADRE
+    setMousePos(updatedPos);
+    if (typeof onTelemetryUpdate === 'function') {
+      onTelemetryUpdate(updatedPos);
+    }
 
     if (isPanningRef.current) {
-      setOffset({
+      updateOffset({
         x: e.clientX - panStartRef.current.x,
         y: e.clientY - panStartRef.current.y,
       });
@@ -357,19 +269,11 @@ export default function PolarCanvas({
 
     activePointersRef.current.delete(e.pointerId);
 
-    if (activePointersRef.current.size < 2) {
-      initialPinchDistRef.current = 0;
-    }
+    if (activePointersRef.current.size < 2) initialPinchDistRef.current = 0;
     if (activePointersRef.current.size === 0) {
       isDraggingRef.current = false;
       isPanningRef.current = false;
     }
-  };
-
-  const handleResetOffset = () => {
-    setOffset({ x: 0, y: 0 });
-    updateRotation(180);
-    updateZoom(1.0);
   };
 
   const handleClick = (e) => {
@@ -399,8 +303,6 @@ export default function PolarCanvas({
   };
 
   const handleWheel = (e) => {
-    e.preventDefault();
-
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -412,7 +314,7 @@ export default function PolarCanvas({
     const nextZoom = Math.min(Math.max(internalZoom * zoomFactor, 0.8), 10);
 
     const scaleChange = nextZoom / internalZoom;
-    setOffset((prevOffset) => ({
+    updateOffset((prevOffset) => ({
       x: mouseX - (mouseX - prevOffset.x) * scaleChange,
       y: mouseY - (mouseY - prevOffset.y) * scaleChange,
     }));
@@ -420,137 +322,103 @@ export default function PolarCanvas({
     updateZoom(nextZoom);
   };
 
-  // --------------------------------------------------------------------------
-  // BUCLE DE RENDERIZADO FLUIDO (CANVAS 2D A 60 FPS)
-  // --------------------------------------------------------------------------
+  // Renderizado gráfico Canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    let animId;
-    lastFrameTimeRef.current = performance.now();
+    ctx.clearRect(0, 0, width, height);
+    const centerX = width / 2 + offset.x;
+    const centerY = height / 2 + offset.y;
 
-    const renderFrame = (now) => {
-      const deltaMs = now - lastFrameTimeRef.current;
-      lastFrameTimeRef.current = now;
+    const isNeon = activeLayers?.neonMode ?? true;
 
-      // Avanzar el reloj de simulación si no está en pausa
-      if (!isPausedRef.current && deltaMs > 0) {
-        simulatedTimeRef.current += deltaMs * speedMultiplierRef.current;
-        setSimulatedTime(simulatedTimeRef.current);
-      }
+    // Cuadrícula de Fondo
+    ctx.save();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
+    ctx.lineWidth = 1;
+    const gridSize = 40;
+    for (let x = 0; x < width; x += gridSize) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+    }
+    for (let y = 0; y < height; y += gridSize) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+    }
+    ctx.restore();
 
-      const currentSimTime = simulatedTimeRef.current;
+    // Capas Base
+    drawOcean(ctx, centerX, centerY, mapRadius, isNeon);
+    drawOceanLabels(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    
 
-      ctx.clearRect(0, 0, width, height);
-      const centerX = width / 2 + offset.x;
-      const centerY = height / 2 + offset.y;
+    if (activeLayers?.currents) {
+      drawCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    }
 
-      // --- 1. Fondo de Cuadrícula Táctica ---
-      ctx.save();
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
-      ctx.lineWidth = 1;
-      const gridSize = 40;
-      for (let x = 0; x < width; x += gridSize) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-      }
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-      }
-      ctx.restore();
+    if (activeLayers?.continents && countriesData) {
+      drawContinents(ctx, countriesData, centerX, centerY, mapRadius, internalRotation, internalZoom, isNeon);
+    }
 
-      // --- 2. Cartografía Base y Geografía ---
-      drawOcean(ctx, centerX, centerY, mapRadius);
-      drawOceanLabels(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    if (activeLayers?.relief && reliefData) {
+      drawRelief(ctx, reliefData, centerX, centerY, mapRadius, internalRotation, internalZoom);
+    }
 
-      if (activeLayers?.currents) {
-        drawCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      }
+    drawRadarSweep(ctx, activeLayers, centerX, centerY, mapRadius);
 
-      if (activeLayers?.continents && countriesData) {
-        drawContinents(
-          ctx,
-          countriesData,
-          centerX,
-          centerY,
-          mapRadius,
-          internalRotation,
-          internalZoom,
-          internalNeonMode
-        );
-      }
+    if (activeLayers?.graticule) {
+      drawGraticule(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+    }
+    if (activeLayers?.equatorAndTropics) {
+      drawTropicsAndEquatorLayer(ctx, centerX, centerY, mapRadius);
+    }
+    if (activeLayers?.timeZones) {
+      drawTimeZones(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    }
 
-      if (activeLayers?.relief && reliefData) {
-        drawRelief(ctx, reliefData, centerX, centerY, mapRadius, internalRotation, internalZoom);
-      }
+    drawHarmonicAngles(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawGreatCircle(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
 
-      // --- 3. Malla Geodésica y Guías Tácticas ---
-      drawRadarSweep(ctx, activeLayers, centerX, centerY, mapRadius);
+    if (activeLayers?.tectonics && tectonicsData) {
+      drawTectonics(ctx, tectonicsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+    }
+    if (activeLayers?.labels && countriesData) {
+      drawLabels(ctx, countriesData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+    }
 
-      if (activeLayers?.graticule) {
-        drawGraticule(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-      }
-      if (activeLayers?.equatorAndTropics) {
-        drawTropicsAndEquatorLayer(ctx, centerX, centerY, mapRadius);
-      }
-      if (activeLayers?.timeZones) {
-        drawTimeZones(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      }
+    drawAnomalies(ctx, anomaliesData, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawWindCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+    
 
-      drawHarmonicAngles(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      drawGreatCircle(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawAncientSites(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+    drawAirports(ctx, airportsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+    drawStrategicCrossings(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawNaturalResources(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawMigrationFlows(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+    drawGeodesicRoutes(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
 
-      // --- 4. Capas Geofísicas y Fenómenos ---
-      if (activeLayers?.tectonics && tectonicsData) {
-        drawTectonics(ctx, tectonicsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-      }
-      if (activeLayers?.labels && countriesData) {
-        drawLabels(ctx, countriesData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-      }
+    if (activeLayers?.measure) {
+      drawMeasurements(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    }
 
-      drawAnomalies(ctx, anomaliesData, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      drawWindCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, currentSimTime);
-      drawOceanCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawEnochCalendar(ctx, activeLayers, centerX, centerY, mapRadius);
+    drawZodiacDecans(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+    drawConstellations(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawGrandAlignment(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
 
-      // --- 5. Infraestructura, Puntos de Interés y Rutas ---
-      drawAncientSites(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-      drawAirports(ctx, airportsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-      drawStrategicCrossings(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      drawNaturalResources(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      drawMigrationFlows(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, currentSimTime);
-      drawGeodesicRoutes(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawAstronomy(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+    drawPlanets(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
 
-      if (activeLayers?.measure) {
-        drawMeasurements(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      }
+    if (activeLayers?.sunlight) {
+      drawSunlight(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    }
 
-      // --- 6. Mecánica Celeste, Zodíaco, Enoc y Eras Precesionales ---
-      drawEnochCalendar(ctx, activeLayers, centerX, centerY, mapRadius);
-      drawZodiacDecans(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, currentSimTime);
-      drawConstellations(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      drawGrandAlignment(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, currentSimTime);
+    drawCompassRose(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+    drawAuroraBorealis(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, 3, simulatedTime);
 
-      drawAstronomy(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, currentSimTime);
-      drawPlanets(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, currentSimTime);
+    // 🎯 DIBUJAR MIRILLA / PUNTO ROJO
+    drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos);
 
-      if (activeLayers?.sunlight) {
-        drawSunlight(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      }
-
-      // --- 7. Indicadores de Cierre y Mirilla Táctica ---
-      drawCompassRose(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      drawAuroraBorealis(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, 3, currentSimTime);
-      drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos);
-
-      animId = requestAnimationFrame(renderFrame);
-    };
-
-    animId = requestAnimationFrame(renderFrame);
-
-    return () => {
-      if (animId) cancelAnimationFrame(animId);
-    };
   }, [
     width,
     height,
@@ -561,74 +429,19 @@ export default function PolarCanvas({
     tectonicsData,
     airportsData,
     anomaliesData,
-    jetStreamsData,
     measurePoints,
     internalRotation,
     internalZoom,
-    internalNeonMode,
     offset,
     mousePos,
+    simulatedTime,
   ]);
 
-  // --------------------------------------------------------------------------
-  // LAYOUT GENERAL Y MÓDULOS FLOTANTES HUD
-  // --------------------------------------------------------------------------
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full flex justify-center items-center bg-slate-950 p-1 overflow-hidden select-none touch-none"
     >
-      {/* 1. BUSCADOR DE CIUDADES / AEROPUERTOS Y TELEMETRÍA GEOGRÁFICA (SUPERIOR IZQUIERDA) */}
-      <div className="absolute top-4 left-4 md:left-72 z-30">
-        <CitySearch onSelectLocation={handleSelectCity} airportsData={airportsData} />
-      </div>
-
-      {/* 2. PANEL DE ALINEACIONES Y ERAS PRECESIONALES (DEBAJO DEL BUSCADOR) */}
-      <GrandAlignmentHUD
-        simulatedTime={simulatedTime}
-        setSimulatedTime={(t) => {
-          simulatedTimeRef.current = t;
-          setSimulatedTime(t);
-        }}
-      />
-
-      {/* 3. DETECTOR DE ECLIPSES Y NODOS LUNARES (SUPERIOR DERECHA) */}
-      <EclipseDetectorHUD simulatedTime={simulatedTime} />
-
-      {/* 4. REPRODUCTOR KINEMÁTICO TEMPORAL (ESQUINA INFERIOR DERECHA) */}
-      <TimeControls
-        simulatedTime={simulatedTime}
-        setSimulatedTime={(timeOrFn) => {
-          const nextTime = typeof timeOrFn === 'function' ? timeOrFn(simulatedTimeRef.current) : timeOrFn;
-          simulatedTimeRef.current = nextTime;
-          setSimulatedTime(nextTime);
-        }}
-        isPaused={isPaused}
-        setIsPaused={setIsPaused}
-        speedMultiplier={speedMultiplier}
-        setSpeedMultiplier={setSpeedMultiplier}
-        onResetRealTime={handleResetRealTime}
-      />
-
-      {/* 5. TELEMETRÍA DE COORDENADAS POLARES (ESQUINA INFERIOR IZQUIERDA) */}
-      <HUDTelemetryOverlay
-        rotation={internalRotation}
-        zoom={internalZoom}
-        mousePos={mousePos}
-      />
-
-      {/* 6. CONSOLA DE NAVEGACIÓN 2D Y ROTACIÓN (ESQUINA SUPERIOR DERECHA) */}
-      <Map2DControls
-        rotation={internalRotation}
-        onRotateChange={updateRotation}
-        zoom={internalZoom}
-        onZoomChange={updateZoom}
-        onResetView={handleResetOffset}
-        activeLayers={{ ...activeLayers, neonMode: internalNeonMode }}
-        onToggleLayer={handleToggleNeon}
-      />
-
-      {/* LIENZO PRINCIPAL POLAR CANVAS */}
       <canvas
         ref={canvasRef}
         width={width}

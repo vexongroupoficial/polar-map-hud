@@ -1,92 +1,89 @@
 // components/map2d/hud/GrandAlignmentHUD.jsx
 'use client';
 
-import { useState } from 'react';
-
-// El año ("year") representa la CÚSPIDE DE INICIO exacta de cada Era Precesional
-const ALL_12_ERAS = [
-  { id: 'pisces',     name: 'ERA DE PISCIS',     symbol: '♓', year: 1,      startYear: 1,     endYear: 2160,  range: '1 - 2160 d.C.' },
-  { id: 'aquarius',   name: 'ERA DE ACUARIO',    symbol: '♒', year: 2160,   startYear: 2160,  endYear: 4320,  range: '2160 - 4320 d.C.' },
-  { id: 'capricorn',  name: 'ERA DE CAPRICORNIO',symbol: '♑', year: 4320,   startYear: 4320,  endYear: 6480,  range: '4320 - 6480 d.C.' },
-  { id: 'sagittarius',name: 'ERA DE SAGITARIO', symbol: '♐', year: 6480,   startYear: 6480,  endYear: 8640,  range: '6480 - 8640 d.C.' },
-  { id: 'scorpio',    name: 'ERA DE ESCORPIO',   symbol: '♏', year: 8640,   startYear: 8640,  endYear: 10800, range: '8640 - 10800 d.C.' },
-  { id: 'libra',      name: 'ERA DE LIBRA',     symbol: '♎', year: 10800,  startYear: 10800, endYear: 12960, range: '10800 - 12960 d.C.' },
-  { id: 'virgo',      name: 'ERA DE VIRGO',     symbol: '♍', year: 12960,  startYear: 12960, endYear: 15120, range: '12960 - 15120 d.C.' },
-  { id: 'leo',        name: 'ERA DE LEO',       symbol: '♌', year: 15120,  startYear: 15120, endYear: 17280, range: '15120 - 17280 d.C.' },
-  { id: 'cancer',     name: 'ERA DE CÁNCER',    symbol: '♋', year: 17280,  startYear: 17280, endYear: 19440, range: '17280 - 19440 d.C.' },
-  { id: 'gemini',     name: 'ERA DE GÉMINIS',   symbol: '♊', year: -6480,  startYear: -6480, endYear: -4320, range: '6480 - 4320 a.C.' },
-  { id: 'taurus',     name: 'ERA DE TAURO',     symbol: '♉', year: -4320,  startYear: -4320, endYear: -2160, range: '4320 - 2160 a.C.' },
-  { id: 'aries',      name: 'ERA DE ARIES',     symbol: '♈', year: -2160,  startYear: -2160, endYear: 1,     range: '2160 - 1 a.C.' },
+export const ERAS_DATA = [
+  { id: 'piscis', name: 'ERA DE PISCIS', startYear: 1, endYear: 2160, midYear: 1080, icon: '♓' },
+  { id: 'aquarius', name: 'ERA DE ACUARIO', startYear: 2160, endYear: 4320, midYear: 3240, icon: '♒' },
+  { id: 'capricorn', name: 'ERA DE CAPRICORNIO', startYear: 4320, endYear: 6480, midYear: 5400, icon: '♑' },
+  { id: 'sagittarius', name: 'ERA DE SAGITARIO', startYear: 6480, endYear: 8640, midYear: 7560, icon: '♐' },
+  { id: 'scorpio', name: 'ERA DE ESCORPIO', startYear: 8640, endYear: 10800, midYear: 9720, icon: '♏' },
+  { id: 'libra', name: 'ERA DE LIBRA', startYear: 10800, endYear: 12960, midYear: 11880, icon: '♎' },
+  { id: 'virgo', name: 'ERA DE VIRGO', startYear: 12960, endYear: 15120, midYear: 14040, icon: '♍' },
+  { id: 'leo', name: 'ERA DE LEO', startYear: 15120, endYear: 17280, midYear: 16200, icon: '♌' },
+  { id: 'cancer', name: 'ERA DE CÁNCER', startYear: 17280, endYear: 19440, midYear: 18360, icon: '♋' },
+  { id: 'gemini', name: 'ERA DE GÉMINIS', startYear: 19440, endYear: 21600, midYear: 20520, icon: '♊' },
+  { id: 'taurus', name: 'ERA DE TAURO', startYear: 21600, endYear: 23760, midYear: 22680, icon: '♉' },
+  { id: 'aries', name: 'ERA DE ARIES', startYear: 23760, endYear: 25920, midYear: 24840, icon: '♈' },
 ];
 
-export function GrandAlignmentHUD({ simulatedTime, setSimulatedTime }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const currentDate = new Date(simulatedTime);
-  const currentYear = currentDate.getFullYear();
+export default function GrandAlignmentHUD({
+  simulatedTime = Date.now(),
+  setSimulatedTime,
+  activeLayers = {},
+  onToggleLayer,
+}) {
+  const date = new Date(simulatedTime);
+  const currentYear = isNaN(date.getFullYear()) ? 2026 : date.getFullYear();
 
-  const handleJumpToEra = (startYear) => {
-    // Setea el tiempo simulado al Equinoccio de Primavera del primer año de la era
-    const targetDate = new Date(startYear, 2, 21, 12, 0, 0);
-    setSimulatedTime(targetDate.getTime());
+  // Era activa derivada del año simulado
+  const currentEra =
+    ERAS_DATA.find((e) => currentYear >= e.startYear && currentYear < e.endYear) ||
+    ERAS_DATA[0];
+
+  const handleSelectEra = (era) => {
+    if (typeof setSimulatedTime === 'function') {
+      const targetDate = new Date(simulatedTime);
+      targetDate.setFullYear(era.midYear);
+      setSimulatedTime(targetDate.getTime());
+    }
+
+    if (typeof onToggleLayer === 'function') {
+      if (!activeLayers?.precessionalEras) onToggleLayer('precessionalEras');
+      if (!activeLayers?.zodiacHouses) onToggleLayer('zodiacHouses');
+    }
   };
 
   return (
-    <div className="absolute top-52 left-4 md:left-72 z-30 font-mono text-xs select-none w-72 transition-all duration-300">
-      <div className="bg-slate-950/95 border border-amber-500/50 rounded-xl backdrop-blur-xl shadow-[0_0_20px_rgba(245,158,11,0.25)] text-amber-300 overflow-hidden">
-        
-        <div className="flex items-center justify-between px-3 py-2 bg-slate-900/90 border-b border-amber-500/30">
-          <div className="flex items-center gap-1.5 font-bold text-[10px] text-amber-400 tracking-wider">
-            <span className="animate-pulse">🏛️</span> 12 ERAS PRECESIONALES
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] bg-amber-950/80 border border-amber-600/60 px-1.5 py-0.5 rounded font-bold text-amber-300">
-              25,920 AÑOS
-            </span>
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="text-slate-400 hover:text-amber-300 px-1 text-xs font-bold transition-colors"
-            >
-              {isCollapsed ? '▼' : '▲'}
-            </button>
-          </div>
+    <div className="font-mono text-xs select-none space-y-3 text-cyan-300 w-72 p-1">
+      <div className="flex items-center justify-between bg-slate-900/80 p-2 rounded-xl border border-cyan-900/50">
+        <span className="text-[10px] text-slate-400 font-bold uppercase">AÑO SIMULADO:</span>
+        <span className="text-amber-300 font-extrabold tabular-nums bg-slate-950 px-2 py-0.5 rounded border border-amber-500/30">
+          {currentYear} d.C.
+        </span>
+      </div>
+
+      <div className="space-y-1 bg-slate-900/60 p-2 rounded-xl border border-cyan-900/40">
+        <div className="flex justify-between items-center text-[10px] pb-1 border-b border-slate-800">
+          <span className="text-slate-400 font-bold">SELECCIONAR CÚSPIDE DE ERA:</span>
+          <span className="text-cyan-400 font-bold">25,920 AÑOS</span>
         </div>
 
-        {!isCollapsed && (
-          <div className="p-2 flex flex-col gap-1.5 bg-slate-950/70 max-h-64 overflow-y-auto custom-scrollbar">
-            <div className="text-[9px] text-slate-400 px-1 font-semibold tracking-wider">
-              SELECCIONAR CÚSPIDE DE ERA:
-            </div>
-
-            <div className="grid grid-cols-1 gap-1">
-              {ALL_12_ERAS.map((era) => {
-                const isActive = currentYear >= era.startYear && currentYear < era.endYear;
-                return (
-                  <button
-                    key={era.id}
-                    onClick={() => handleJumpToEra(era.startYear)}
-                    className={`px-2.5 py-1.5 border rounded text-left transition-all flex items-center justify-between ${
-                      isActive
-                        ? 'bg-amber-500 text-slate-950 font-bold border-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                        : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-amber-400 hover:text-amber-200'
-                    }`}
-                  >
-                    <span className="text-[10px] font-bold tracking-wide">
-                      {era.symbol} {era.name}
-                    </span>
-                    <span className="text-[8px] opacity-80 font-mono">
-                      {era.range}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
+        <div className="max-h-56 overflow-y-auto space-y-1 pt-1 pr-1 scrollbar-thin scrollbar-thumb-cyan-900">
+          {ERAS_DATA.map((era) => {
+            const isSelected = currentEra.id === era.id;
+            return (
+              <button
+                key={era.id}
+                type="button"
+                onClick={() => handleSelectEra(era)}
+                className={`w-full px-2.5 py-1.5 rounded-lg border text-left font-bold transition flex items-center justify-between text-[11px] cursor-pointer active:scale-95 ${
+                  isSelected
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-400/80 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
+                    : 'bg-slate-950/60 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span>{era.icon}</span>
+                  <span className="truncate">{era.name}</span>
+                </div>
+                <span className="text-[9px] text-slate-400 font-mono shrink-0">
+                  {era.startYear} - {era.endYear} d.C.
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
-
-export default GrandAlignmentHUD;

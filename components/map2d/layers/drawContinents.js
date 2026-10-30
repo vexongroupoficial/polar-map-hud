@@ -1,13 +1,14 @@
+// components/map2d/layers/drawContinents.js
 import { latLonToPolar } from '@/lib/polarMath';
 
 export function drawContinents(
-  ctx, 
-  countriesData, 
-  centerX, 
-  centerY, 
-  mapRadius, 
-  rotation, 
-  zoom, 
+  ctx,
+  countriesData,
+  centerX,
+  centerY,
+  mapRadius,
+  rotation,
+  zoom,
   isNeonMode = true
 ) {
   if (!countriesData || !countriesData.features) return;
@@ -15,19 +16,19 @@ export function drawContinents(
   ctx.save();
 
   if (isNeonMode) {
-    // ⚡ MODO NEÓN / HUD CINEMÁTICO (GLOW ACTIVADO)
-    ctx.fillStyle = '#0f2942';      // Relleno azul profundo
-    ctx.strokeStyle = '#ffffff';    // Línea de costa en blanco nítido
+    // ⚡ MODO NEÓN: Masa azul marino + Bordes blanco nítido con Resplandor Cian
+    ctx.fillStyle = '#0f2942';      // Masa terrestre azul profundo
+    ctx.strokeStyle = '#3ed1db';    // Línea de costa en blanco nítido
     ctx.lineWidth = 1.2;
-    ctx.shadowColor = '#38bdf8';    // Resplandor azul cian neón
-    ctx.shadowBlur = 10;            // Halo luminoso
+    ctx.shadowColor = '#38bdf8';    // Resplandor cian eléctrico
+    ctx.shadowBlur = 10;            // Halo luminoso alrededor de las costas
   } else {
-    // 📐 MODO TÉCNICO / VISTA CARTOGRÁFICA LIMPIA (SIN RESPLANDOR)
-    ctx.fillStyle = '#091e32';      // Relleno azul sobrio
-    ctx.strokeStyle = '#38bdf8';    // Trazo cian técnico
+    // 📐 MODO TÉCNICO: Trazo cian técnico sobrio sin dispersión ni sombras
+    ctx.fillStyle = '#061526';      // Masa terrestre azul oscuro cartográfico
+    ctx.strokeStyle = '#38bdf8';    // Delineado cian plano sin brillo
     ctx.lineWidth = 0.9;
     ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;            // Sin dispersión de luz
+    ctx.shadowBlur = 0;             // Desactiva el brillo/glow completamente
   }
 
   countriesData.features.forEach((feature) => {
