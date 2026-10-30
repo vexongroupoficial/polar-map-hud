@@ -78,7 +78,7 @@ export default function DockToolbar() {
 
   return (
     <>
-      {/* A. MODO ESCRITORIO Y TABLET HORIZONTAL (CENTRADO ABSOLUTO EN EL MAPA) */}
+      {/* A. MODO ESCRITORIO Y TABLET HORIZONTAL (CENTRADO ABSOLUTO EN EL ÁREA DEL MAPA) */}
       <div className="hidden md:flex absolute bottom-4 left-1/2 -translate-x-1/2 z-40 items-center gap-1.5 p-1.5 bg-slate-900/90 backdrop-blur-md border border-cyan-500/40 rounded-2xl shadow-[0_0_25px_rgba(6,182,212,0.2)] font-mono text-xs select-none">
         <div className="px-3 py-1.5 text-[10px] font-black tracking-wider text-cyan-400 uppercase border-r border-slate-800 shrink-0 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -124,8 +124,8 @@ export default function DockToolbar() {
         </div>
       </div>
 
-      {/* B. MODO MÓVIL Y TABLET VERTICAL */}
-      <div className="md:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 p-1.5 bg-slate-950/95 backdrop-blur-lg border border-cyan-500/50 rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)] max-w-[96vw] font-mono select-none">
+      {/* B. MODO MÓVIL Y TABLET VERTICAL (FIXED CON MARGEN ELEVADO Y Z-INDEX ALTO) */}
+      <div className="md:hidden fixed bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 p-1.5 bg-slate-950/95 backdrop-blur-lg border border-cyan-500/60 rounded-2xl shadow-[0_0_25px_rgba(6,182,212,0.4)] max-w-[96vw] font-mono select-none">
         <button
           type="button"
           onClick={() => setIsMobileHubOpen(true)}
@@ -138,6 +138,7 @@ export default function DockToolbar() {
           </span>
         </button>
 
+        {/* 4 ICONOS DE ACCESO RÁPIDO */}
         <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pr-0.5">
           {['city', 'navigation2D', 'luminaries', 'erasHUD'].map((key) => {
             const config = WIDGET_CATALOG[key];
