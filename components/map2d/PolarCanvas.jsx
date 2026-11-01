@@ -3,35 +3,56 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 
-// CAPAS CARTOGRÁFICAS Y GEOFÍSICAS
+// === IMPORTACIÓN DE ENGINES POR CATEGORÍA ===
+// 1. Cartografía Base
 import { drawOcean } from './layers/drawOcean';
-import { drawOceanLabels } from './layers/drawOceanLabels';
 import { drawContinents } from './layers/drawContinents';
-import { drawRelief } from './layers/drawRelief';
-import { drawLabels } from './layers/drawLabels';
-
 import { drawGraticule } from './layers/drawGraticule';
+import { drawLabels } from './layers/drawLabels';
+import { drawTropicsAndEquatorLayer } from './layers/drawTropicsAndEquatorLayer';
+import { drawCities } from './layers/drawCities';
+
+// 2. Relieve e Hidrografía
+import { drawOceanLabels } from './layers/drawOceanLabels';
+import { drawRelief } from './layers/drawRelief';
+import { drawHydrography } from './layers/drawHydrography';
+import { drawLakes } from './layers/drawLakes';
+import { drawGlaciers } from './layers/drawGlaciers';
+import { drawForests } from './layers/drawForests';
+import { drawAridZones } from './layers/drawAridZones';
+import { drawMeanderLakes } from './layers/drawMeanderLakes'; 
+
+// 3. Geofísica y Clima
+import { drawWindCurrents } from './layers/drawWindCurrents';
+import { drawOceanCurrents } from './layers/drawOceanCurrents';
+import { drawTornadoAreas } from './layers/drawTornadoAreas';
+import { drawTectonics } from './layers/drawTectonics';
+import { drawAnomaliesTriangle } from './layers/drawAnomaliesTriangle';
+import { drawAuroraBorealis } from './layers/drawAuroraBorealis';
+import { drawCoriolisEffect } from './layers/drawCoriolisEffect';
+import { drawVolcanicAnomalies } from './layers/drawVolcanicAnomalies';
+import { drawSeismicAnomalies } from './layers/drawSeismicAnomalies';
+import { drawEnsoAnomalies } from './layers/drawEnsoAnomalies'; 
+import { drawMagneticAnomalies } from './layers/drawMagneticAnomalies'; 
+import { drawRadarSweep } from './layers/drawRadarSweep';
+
+// 4. Navegación y Medida
 import { drawTimeZones } from './layers/drawTimeZones';
 import { drawCompassRose } from './layers/drawCompassRose';
 import { drawGreatCircle } from './layers/drawGreatCircle';
-import { drawGeodesicRoutes } from './layers/drawGeodesicRoutes';
-import { drawMeasurements } from './layers/drawMeasurements';
 import { drawHarmonicAngles } from './layers/drawHarmonicAngles';
+import { drawMeasurements } from './layers/drawMeasurements';
+import { drawPolarCoordinates } from './layers/drawPolarCoordinates';
 
-import { drawTectonics } from './layers/drawTectonics';
-import { drawAnomalies } from './layers/drawAnomalies';
-import { drawAuroraBorealis } from './layers/drawAuroraBorealis';
-import { drawWindCurrents } from './layers/drawWindCurrents';
-import { drawOceanCurrents } from './layers/drawOceanCurrents';
-import { drawCurrents } from './layers/drawCurrents';
-import { drawRadarSweep } from './layers/drawRadarSweep';
-
-import { drawNaturalResources } from './layers/drawNaturalResources';
-import { drawStrategicCrossings } from './layers/drawStrategicCrossings';
+// 5. Geopolítica y Recursos
 import { drawAirports } from './layers/drawAirports';
-import { drawMigrationFlows } from './layers/drawMigrationFlows';
 import { drawAncientSites } from './layers/drawAncientSites';
+import { drawStrategicCrossings } from './layers/drawStrategicCrossings';
+import { drawNaturalResources } from './layers/drawNaturalResources';
+import { drawMigrationFlows } from './layers/drawMigrationFlows';
+import { drawResourceDistribution } from './layers/drawResourceDistribution';
 
+// 6. Astronomía y Simulación Celeste
 import { drawSunlight } from './layers/drawSunlight';
 import { drawAstronomy } from './layers/drawAstronomy';
 import { drawPlanets } from './layers/drawPlanets';
@@ -39,12 +60,17 @@ import { drawEnochCalendar } from './layers/drawEnochCalendar';
 import { drawZodiacDecans } from './layers/drawZodiacDecans';
 import { drawConstellations } from './layers/drawConstellations';
 import { drawGrandAlignment } from './layers/drawGrandAlignment';
+import { drawMoonPhases } from './layers/drawMoonPhases';
 
+// 7. Geometría Sagrada
+import { drawSacredGeometry } from './layers/drawSacredGeometry';
+
+
+// Utilidades Geo
 import { useGeoData } from './hooks/useGeoData';
 import {
   getCountryAndContinentAtPoint,
   drawTargetingCrosshair,
-  drawTropicsAndEquatorLayer,
 } from '../../lib/geoUtils';
 
 export default function PolarCanvas({
@@ -57,6 +83,8 @@ export default function PolarCanvas({
   setOffset,
   simulatedTime = Date.now(),
   measurePoints = [],
+  selectedCity=null,
+  selectedOceanId = null,
   onAddMeasurePoint,
   onTelemetryUpdate,
 }) {
@@ -69,7 +97,6 @@ export default function PolarCanvas({
   const [internalRotation, setInternalRotation] = useState(rotation);
   const [internalZoom, setInternalZoom] = useState(zoom);
 
-  // 🎯 ESTADO LOCAL PARA DIBUJAR LA MIRILLA Y PUNTO ROJO
   const [mousePos, setMousePos] = useState({
     lat: 0,
     lon: 0,
@@ -101,6 +128,7 @@ export default function PolarCanvas({
   const initialPinchDistRef = useRef(0);
   const initialPinchZoomRef = useRef(1);
 
+  // Resize Observer
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -151,6 +179,7 @@ export default function PolarCanvas({
     [setOffset]
   );
 
+  // Controladores de Puntero y Mouse
   const handlePointerDown = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -239,7 +268,6 @@ export default function PolarCanvas({
       continent: geoInfo.continent || 'Océano Global',
     };
 
-    // 🎯 ACTUALIZAR MIRILLA LOCAL Y TELEMETRÍA PADRE
     setMousePos(updatedPos);
     if (typeof onTelemetryUpdate === 'function') {
       onTelemetryUpdate(updatedPos);
@@ -322,103 +350,495 @@ export default function PolarCanvas({
     updateZoom(nextZoom);
   };
 
-  // Renderizado gráfico Canvas
+  // =========================================================================
+  // BUCLE PRINCIPAL DE RENDERIZADO (ORGANIZADO POR CATEGORÍAS INDEPENDIENTES)
+  // =========================================================================
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    ctx.clearRect(0, 0, width, height);
-    const centerX = width / 2 + offset.x;
-    const centerY = height / 2 + offset.y;
+    let animationFrameId;
 
-    const isNeon = activeLayers?.neonMode ?? true;
+    const render = (timestamp) => {
+      const w = canvas.width;
+      const h = canvas.height;
+      if (!w || !h) return;
 
-    // Cuadrícula de Fondo
-    ctx.save();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    for (let x = 0; x < width; x += gridSize) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-    }
-    for (let y = 0; y < height; y += gridSize) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-    }
-    ctx.restore();
+      // Reset Lienzo
+      ctx.clearRect(0, 0, w, h);
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
 
-    // Capas Base
-    drawOcean(ctx, centerX, centerY, mapRadius, isNeon);
-    drawOceanLabels(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    
+      const centerX = w / 2 + offset.x;
+      const centerY = h / 2 + offset.y;
+      const isNeon = activeLayers?.neonMode ?? false;
+      const animTime = timestamp;
 
-    if (activeLayers?.currents) {
-      drawCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    }
+      // -------------------------------------------------------------
+      // 0. FONDO TÁCTICO HUD Y CUADRÍCULA
+      // -------------------------------------------------------------
+      ctx.save();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
+      ctx.lineWidth = 1;
+      const gridSize = 40;
+      for (let x = 0; x < w; x += gridSize) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += gridSize) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+      ctx.restore();
 
-    if (activeLayers?.continents && countriesData) {
-      drawContinents(ctx, countriesData, centerX, centerY, mapRadius, internalRotation, internalZoom, isNeon);
-    }
+      // -------------------------------------------------------------
+      // CATEGORÍA 1: CARTOGRAFÍA BASE
+      // -------------------------------------------------------------
+        drawOcean(
+          ctx,
+          activeLayers,      // 👈 Se pasa el objeto de capas del Sidebar (evalúa activeLayers.oceans)
+          centerX,
+          centerY,
+          mapRadius,
+          isNeon,
+          selectedOceanId,     // ID de la cuenca seleccionada o null
+          internalRotation,
+          animTime
+        );
 
-    if (activeLayers?.relief && reliefData) {
-      drawRelief(ctx, reliefData, centerX, centerY, mapRadius, internalRotation, internalZoom);
-    }
+      if (activeLayers?.continents && countriesData) {
+        drawContinents(ctx, countriesData, centerX, centerY, mapRadius, internalRotation, internalZoom, isNeon);
+      }
+      if (activeLayers?.graticule) {
+        drawGraticule(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
 
-    drawRadarSweep(ctx, activeLayers, centerX, centerY, mapRadius);
+        
+      }
+      if (activeLayers?.equatorAndTropics || activeLayers?.ecuador || activeLayers?.tropics) {
+        drawTropicsAndEquatorLayer(ctx, centerX, centerY, mapRadius, internalRotation, isNeon);
+      }
+              // 🏙️ RENDERIZADO DE CIUDADES Y OBJETIVO DE BÚSQUEDA
+        if (activeLayers?.Cities) {
+          drawCities(
+            ctx,
+            activeLayers,
+            centerX,
+            centerY,
+            mapRadius,
+            internalRotation,
+            internalZoom,
+            selectedCity,
+            animTime
+          );
+        }
+        if (activeLayers?.labels && countriesData) {
+          drawLabels(ctx, countriesData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+        }
 
-    if (activeLayers?.graticule) {
-      drawGraticule(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-    }
-    if (activeLayers?.equatorAndTropics) {
-      drawTropicsAndEquatorLayer(ctx, centerX, centerY, mapRadius);
-    }
-    if (activeLayers?.timeZones) {
-      drawTimeZones(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    }
+      // -------------------------------------------------------------
+      // CATEGORÍA 2: RELIEVE E HIDROGRAFÍA
+      // -------------------------------------------------------------
+      drawOceanLabels(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
 
-    drawHarmonicAngles(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    drawGreatCircle(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      if (activeLayers?.relief && reliefData) {
+        drawRelief(
+          ctx,
+          reliefData,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          internalZoom
+         );
+        }
 
-    if (activeLayers?.tectonics && tectonicsData) {
-      drawTectonics(ctx, tectonicsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-    }
-    if (activeLayers?.labels && countriesData) {
-      drawLabels(ctx, countriesData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-    }
+      // Engine de Hidrografía (Ríos, Lagos, Glaciares, Bosques, Zonas Áridas)
+        drawHydrography(
+            ctx,
+            activeLayers,
+            centerX,
+            centerY,
+            mapRadius,
+            internalRotation,
+            internalZoom,
+            isNeon,
+            animTime // 👈 Pasa la marca de tiempo para la animación del flujo de partículas
+      );
 
-    drawAnomalies(ctx, anomaliesData, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    drawWindCurrents(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
-    
+        drawLakes(
+          ctx,
+          activeLayers,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          internalZoom,
+          isNeon
+        )
 
-    drawAncientSites(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-    drawAirports(ctx, airportsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
-    drawStrategicCrossings(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    drawNaturalResources(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    drawMigrationFlows(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
-    drawGeodesicRoutes(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
+        drawGlaciers(
+          ctx,
+          activeLayers,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          isNeon,
+          animTime
+        );
 
-    if (activeLayers?.measure) {
-      drawMeasurements(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    }
+        // 🌲 Engine de Bosques y Cobertura Forestal
+          drawForests(
+            ctx,
+            activeLayers,
+            centerX,
+            centerY,
+            mapRadius,
+            internalRotation,
+            isNeon,
+            internalZoom
+          );
 
-    drawEnochCalendar(ctx, activeLayers, centerX, centerY, mapRadius);
-    drawZodiacDecans(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
-    drawConstellations(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    drawGrandAlignment(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+          // 🏜️ Engine de Zonas Áridas, Desiertos y Médanos
+          drawAridZones(
+            ctx,
+            activeLayers,
+            centerX,
+            centerY,
+            mapRadius,
+            internalRotation,
+            isNeon,
+            internalZoom
+          );
 
-    drawAstronomy(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
-    drawPlanets(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+        drawMeanderLakes(
+          ctx,
+          activeLayers,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          isNeon,
+          internalZoom
+        );
+      // -------------------------------------------------------------
+      // CATEGORÍA 3: GEOFÍSICA Y CLIMA
+      // -------------------------------------------------------------
+      if (activeLayers?.windCurrents) {
+        drawWindCurrents(
+          ctx,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          animTime,
+          isNeon
+        );
+      }
+      if (activeLayers?.oceanTides) {
+        drawOceanCurrents(
+          ctx,
+          centerX, 
+          centerY,
+          mapRadius, 
+          internalRotation,
+          animTime,
+          isNeon
+        );
+      }
+      if (activeLayers?.tornadoes) {
+        drawTornadoAreas(
+          ctx, 
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          animTime,
+          isNeon
+        );
+      }
+      if (activeLayers?.tectonics && tectonicsData) {
+        drawTectonics(
+          ctx,
+          tectonicsData,
+          activeLayers,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          internalZoom
+        );
+      }  
+  
+        // -------------------------------------------------------------
+        // CATEGORÍA 4: ANOMALÍAS Y FENÓMENOS ATMOSFÉRICOS
+        // -------------------------------------------------------------
 
-    if (activeLayers?.sunlight) {
-      drawSunlight(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    }
+      // 🔺 1. Triángulo de las Bermudas / Dragón
+          if (activeLayers?.AnomaliesTriangle || activeLayers?.anomaliesTriangle || activeLayers?.anomalies) {
+            drawAnomaliesTriangle(
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          } 
 
-    drawCompassRose(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-    drawAuroraBorealis(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, 3, simulatedTime);
+          //  2. Anomalías Polar Aurora Boreal
 
-    // 🎯 DIBUJAR MIRILLA / PUNTO ROJO
-    drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos);
+         if (activeLayers?.polarAurora || activeLayers?.auroraBorealis) {
+            drawAuroraBorealis(
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          }
 
+          // ☁️ 2. Anomalías volcanicas
+          if (activeLayers?.volcanicAnomalies) {
+            drawVolcanicAnomalies(
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          }
+
+          // ⚡ Engine de Anomalías Sísmicas y Rupturas Supersónicas
+          if (activeLayers?.seismicAnomalies || activeLayers?.seismic || activeLayers?.anomaliasSismicas) {
+            drawSeismicAnomalies(
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          }
+
+          if (activeLayers?.atmosphericAnomalies || activeLayers?.tornadoes) {
+            drawTornadoAreas(
+              ctx, 
+              activeLayers, 
+              centerX, 
+              centerY, 
+              mapRadius, 
+              internalRotation, 
+              animTime, 
+              isNeon
+            
+            );
+          }
+
+          // 🌊 3. Anomalías ENSO
+          if (activeLayers?.ensoAnomalies) 
+            (
+            activeLayers?.ensoAnomalies ||
+            activeLayers?.EnsoAnomalies ||
+            activeLayers?.enso ||
+            activeLayers?.elNinoLaNina
+   
+          ) 
+            
+            {
+            drawEnsoAnomalies(          
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          }
+
+
+          if (activeLayers?.coriolis || activeLayers?.coriolisEffect) {
+            drawCoriolisEffect(
+              ctx, 
+              activeLayers, 
+              centerX, 
+              centerY, 
+              mapRadius, 
+              internalRotation, 
+              animTime, 
+              isNeon
+            );
+          }
+
+          // 🧲 Engine de Anomalías Magnéticas Planetarias
+          if (activeLayers?.magneticAnomalies || activeLayers?.magnetic || activeLayers?.anomaliasMagneticas) {
+            drawMagneticAnomalies(
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          }
+
+          // 📡 5. Radar Escáner 360°
+          if (activeLayers?.radarSweep) {
+            drawRadarSweep(
+              ctx,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          }
+
+
+
+      // -------------------------------------------------------------
+      // CATEGORÍA 4: NAVEGACIÓN Y MEDIDA
+      // -------------------------------------------------------------
+      if (activeLayers?.timeZones) {
+        drawTimeZones(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      }
+      if (activeLayers?.greatCircle) {
+        drawGreatCircle(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      }
+      drawHarmonicAngles(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+      
+      // 🛑 CONDICIÓN ESTRICTA: La Rosa de los Vientos y Coordenadas solo se dibujan si la capa está activa
+      if (activeLayers?.graticule || activeLayers?.compassRose) {
+        drawCompassRose(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      }
+
+      if (activeLayers?.measure) {
+        drawMeasurements(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      }
+
+
+      if (
+          activeLayers?.radarSweep ||
+          activeLayers?.radar ||
+          activeLayers?.radarScanner ||
+          activeLayers?.escner360
+        ) {
+          drawRadarSweep(
+            ctx,
+            activeLayers,
+            centerX,
+            centerY,
+            mapRadius,
+            internalRotation,
+            animTime,
+            isNeon
+          );
+        }
+
+          if (
+            activeLayers?.polarCoordinates ||
+            activeLayers?.coordinates ||
+            activeLayers?.grid ||
+            activeLayers?.coordenadasPolares
+          ) {
+            drawPolarCoordinates(
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon,
+              mousePos // Pasa el estado del puntero (si existe) para la telemetría en tiempo real
+            );
+          }
+
+          if (
+            activeLayers?.resourceDistribution ||
+            activeLayers?.resources ||
+            activeLayers?.recursosEstrategicos ||
+            activeLayers?.minerals
+          ) {
+            drawResourceDistribution(
+              ctx,
+              activeLayers,
+              centerX,
+              centerY,
+              mapRadius,
+              internalRotation,
+              animTime,
+              isNeon
+            );
+          }
+
+      // -------------------------------------------------------------
+      // CATEGORÍA 5: GEOPOLÍTICA Y RECURSOS
+      // -------------------------------------------------------------
+      drawAirports(ctx, airportsData, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+      drawAncientSites(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+      drawLakes(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, internalZoom);
+      drawStrategicCrossings(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      drawNaturalResources(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      drawMigrationFlows(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+
+      // -------------------------------------------------------------
+      // CATEGORÍA 6: ASTRONOMÍA Y SIMULACIÓN CELESTE
+      // -------------------------------------------------------------
+      if (activeLayers?.sunlight) {
+        drawSunlight(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      }
+      drawAstronomy(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+      drawPlanets(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);    
+      drawConstellations(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+      drawGrandAlignment(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+
+        if (activeLayers?.moonPhases || activeLayers?.moon || activeLayers?.fasesDeLaLuna) {
+          drawMoonPhases(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
+        }
+
+        if (activeLayers?.enochCalendar || activeLayers?.enoch || activeLayers?.calendarioDeEnoc) {
+          drawEnochCalendar(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
+        }
+
+        if (activeLayers?.zodiacDecans || activeLayers?.zodiac || activeLayers?.decanatosZodiacales) {
+          drawZodiacDecans(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
+}
+
+
+      // -------------------------------------------------------------
+      // CATEGORÍA 7: GEOMETRÍA SAGRADA (ENGINE CENTRALIZADO)
+      // -------------------------------------------------------------
+      drawSacredGeometry(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
+
+      // -------------------------------------------------------------
+      // 8. INTERFAZ Y MIRILLA TÁCTICA HUD (SIEMPRE ARRIBA)
+      // -------------------------------------------------------------
+      drawTargetingCrosshair(ctx, centerX, centerY, mapRadius, mousePos);
+
+      // Siguiente Fotograma (60 FPS)
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
   }, [
     width,
     height,
@@ -430,6 +850,8 @@ export default function PolarCanvas({
     airportsData,
     anomaliesData,
     measurePoints,
+    selectedCity,
+    selectedOceanId,
     internalRotation,
     internalZoom,
     offset,

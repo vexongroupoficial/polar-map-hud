@@ -21,7 +21,7 @@ import { drawMeasurements } from './layers/drawMeasurements';
 import { drawHarmonicAngles } from './layers/drawHarmonicAngles';
 
 import { drawTectonics } from './layers/drawTectonics';
-import { drawAnomalies } from './layers/drawAnomalies';
+import { drawAnomalies } from './layers/drawAnomaliesTriangle';
 import { drawAuroraBorealis } from './layers/drawAuroraBorealis';
 import { drawWindCurrents } from './layers/drawWindCurrents';
 import { drawOceanCurrents } from './layers/drawOceanCurrents';

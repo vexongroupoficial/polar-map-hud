@@ -37,7 +37,7 @@ export default function Home() {
   // Estado inicial de capas garantizando neonMode en true
   const [layers, setLayers] = useState(() => ({
     ...INITIAL_ACTIVE_LAYERS,
-    neonMode: true,
+    neonMode: false,
   }));
 
   const [viewMode, setViewMode] = useState('2D');

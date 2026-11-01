@@ -4,16 +4,16 @@ import { latLonToPolar } from '@/lib/polarMath';
  * Renderiza los Puntos Cardinales y la Rosa de los Vientos con espacio amplio.
  */
 export function drawCompassRose(ctx, activeLayers, centerX, centerY, mapRadius, rotation) {
-  if (activeLayers?.compassRose === false && activeLayers?.graticule === false) return;
+  if (activeLayers?.compassRose === false) return;
 
   ctx.save();
 
   // PUNTOS CARDINALES Y SU CONFIGURACIÓN
   const CARDINAL_POINTS = [
-    { label: 'N • 0°', sub: 'GREENWICH', angleDeg: 0, color: '#38bdf8', isMain: true },
-    { label: 'E • 90°E', sub: 'ORIENTE', angleDeg: 90, color: '#f59e0b', isMain: true },
-    { label: 'S • 180°', sub: 'ANTIMERIDIANO', angleDeg: 180, color: '#ef4444', isMain: true },
-    { label: 'W • 90°W', sub: 'OCCIDENTE', angleDeg: 270, color: '#f59e0b', isMain: true },
+    { label: 'N • 0°', sub: 'GREENWICH', angleDeg: 0, color: '#38bdf8', isMain: false },
+    { label: 'E • 90°E', sub: 'ORIENTE', angleDeg: 90, color: '#f59e0b', isMain: false },
+    { label: 'S • 180°', sub: 'ANTIMERIDIANO', angleDeg: 180, color: '#ef4444', isMain: false },
+    { label: 'W • 90°W', sub: 'OCCIDENTE', angleDeg: 270, color: '#f59e0b', isMain: false },
     { label: 'NE • 45°', sub: '', angleDeg: 45, color: '#94a3b8', isMain: false },
     { label: 'SE • 135°', sub: '', angleDeg: 135, color: '#94a3b8', isMain: false },
     { label: 'SW • 225°', sub: '', angleDeg: 225, color: '#94a3b8', isMain: false },

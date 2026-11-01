@@ -1,13 +1,13 @@
+// components/map2d/layers/drawOceanCurrents.js
 import { latLonToPolar } from '@/lib/polarMath';
 
-// 1. CENTROIDES DE MASA OCEÁNICA CON RADIOS DELIMITADOS (Evita traspasar continentes)
 const OCEAN_BASINS = [
   { 
     id: 'atlantic_north',
     name: 'Océano Atlántico Norte', 
     lat: 32, 
     lon: -40, 
-    maxRadiusRatio: 0.18, // Delimitado por América, Europa y África
+    maxRadiusRatio: 0.18, 
     colorRgb: '56, 189, 248', 
     hex: '#38bdf8' 
   },
@@ -16,7 +16,7 @@ const OCEAN_BASINS = [
     name: 'Océano Atlántico Sur', 
     lat: -25, 
     lon: -20, 
-    maxRadiusRatio: 0.20, // Delimitado por Sudamérica y África
+    maxRadiusRatio: 0.20, 
     colorRgb: '14, 165, 233', 
     hex: '#0ea5e9' 
   },
@@ -25,7 +25,7 @@ const OCEAN_BASINS = [
     name: 'Océano Pacífico Norte', 
     lat: 35, 
     lon: -155, 
-    maxRadiusRatio: 0.26, // Delimitado por Asia, América del Norte y el borde exterior
+    maxRadiusRatio: 0.26, 
     colorRgb: '6, 182, 212', 
     hex: '#06b6d4' 
   },
@@ -34,7 +34,7 @@ const OCEAN_BASINS = [
     name: 'Océano Pacífico Sur', 
     lat: -30, 
     lon: -130, 
-    maxRadiusRatio: 0.28, // Delimitado por Oceanía, Sudamérica y la Antártida
+    maxRadiusRatio: 0.28, 
     colorRgb: '2, 132, 199', 
     hex: '#0284c7' 
   },
@@ -43,7 +43,7 @@ const OCEAN_BASINS = [
     name: 'Océano Índico', 
     lat: -20, 
     lon: 80, 
-    maxRadiusRatio: 0.20, // Delimitado por África, India, Asia y Australia
+    maxRadiusRatio: 0.20, 
     colorRgb: '20, 184, 166', 
     hex: '#14b8a6' 
   },
@@ -52,7 +52,7 @@ const OCEAN_BASINS = [
     name: 'Océano Ártico (Polo Norte)', 
     lat: 84, 
     lon: 0, 
-    maxRadiusRatio: 0.12, // Confinado estrictamente al casquete norte central
+    maxRadiusRatio: 0.12, 
     colorRgb: '103, 232, 249', 
     hex: '#67e8f9' 
   },
@@ -73,17 +73,16 @@ function getSubsolarPoint(timeMs) {
   return { lat, lon };
 }
 
+// 🎯 FIRMA CORREGIDA: Normalizados los parámetros espaciales y de tiempo
 export function drawOceanCurrents(
   ctx,
-  activeLayers,
   centerX,
   centerY,
   mapRadius,
-  rotation,
-  time = Date.now()
+  rotation = 180,
+  time = Date.now(),
+  isNeon = true
 ) {
-  if (!activeLayers?.oceanTides) return;
-
   ctx.save();
 
   // Máscara de recorte estricta del disco geodésico
@@ -105,7 +104,7 @@ export function drawOceanCurrents(
     const proximity = Math.max(0, 1 - Math.hypot(deltaLat / 40, deltaLon / 75));
     const isDirectlyExposed = proximity > 0.35;
 
-    const waveCount = 3; // Menos ondas simultáneas para mayor limpieza visual
+    const waveCount = 3;
     const speed = isDirectlyExposed ? 0.000045 : 0.000028;
     const maxPixelRadius = mapRadius * basin.maxRadiusRatio;
 
@@ -113,7 +112,6 @@ export function drawOceanCurrents(
       const progress = ((time * speed) + (w / waveCount)) % 1;
       const currentRadius = progress * maxPixelRadius;
 
-      // Desvanecimiento suave al alcanzar el límite de la cuenca
       const alphaBase = isDirectlyExposed ? 0.70 : 0.40;
       const alpha = Math.pow(Math.sin(progress * Math.PI), 1.5) * alphaBase;
 
@@ -124,21 +122,29 @@ export function drawOceanCurrents(
       ctx.save();
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = (isDirectlyExposed ? 2.0 : 1.3) * (1 - progress * 0.2);
-      ctx.shadowColor = isDirectlyExposed ? '#fde047' : `rgb(${basin.colorRgb})`;
-      ctx.shadowBlur = isDirectlyExposed ? 8 : 4;
+      
+      if (isNeon) {
+        ctx.shadowColor = isDirectlyExposed ? '#fde047' : `rgb(${basin.colorRgb})`;
+        ctx.shadowBlur = isDirectlyExposed ? 8 : 4;
+      } else {
+        ctx.shadowBlur = 0;
+      }
 
       ctx.beginPath();
       ctx.arc(bx, by, Math.max(2, currentRadius), 0, Math.PI * 2);
       ctx.stroke();
 
-      // Rompiente costera exacta en el radio máximo de la cuenca
       if (progress > 0.75) {
         const coastFade = (progress - 0.75) / 0.25;
         const coastAlpha = Math.sin(coastFade * Math.PI) * alpha * 0.6;
 
         ctx.strokeStyle = `rgba(255, 255, 255, ${coastAlpha})`;
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 6;
+        if (isNeon) {
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = 6;
+        } else {
+          ctx.shadowBlur = 0;
+        }
         ctx.lineWidth = 1.2;
 
         ctx.beginPath();
@@ -146,36 +152,23 @@ export function drawOceanCurrents(
         ctx.stroke();
       }
 
-      // Onda de retorno / resaca contraída hacia el centro
-      if (progress > 0.5) {
-        const returnProgress = 1 - progress;
-        const returnRadius = returnProgress * maxPixelRadius * 0.85;
-        const returnAlpha = alpha * 0.3;
-
-        ctx.strokeStyle = isDirectlyExposed
-          ? `rgba(253, 224, 71, ${returnAlpha})`
-          : `rgba(${basin.colorRgb}, ${returnAlpha})`;
-        ctx.lineWidth = 0.9;
-        ctx.setLineDash([2, 5]);
-
-        ctx.beginPath();
-        ctx.arc(bx, by, Math.max(1, returnRadius), 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
       ctx.restore();
     }
 
-    // Núcleo central del centroide
+    // Núcleo central
     ctx.fillStyle = isDirectlyExposed ? '#fde047' : basin.hex;
-    ctx.shadowColor = isDirectlyExposed ? '#fde047' : basin.hex;
-    ctx.shadowBlur = isDirectlyExposed ? 12 : 5;
+    if (isNeon) {
+      ctx.shadowColor = isDirectlyExposed ? '#fde047' : basin.hex;
+      ctx.shadowBlur = isDirectlyExposed ? 12 : 5;
+    } else {
+      ctx.shadowBlur = 0;
+    }
 
     ctx.beginPath();
     ctx.arc(bx, by, isDirectlyExposed ? 3.2 : 2.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Etiqueta HUD de cuenca compacta
+    // Etiqueta HUD
     ctx.shadowBlur = 0;
     ctx.setLineDash([]);
     ctx.font = 'bold 7px monospace';

@@ -1,164 +1,85 @@
+// components/map2d/layers/drawWindCurrents.js
 import { latLonToPolar } from '@/lib/polarMath';
 
-// Definición de bandas de viento con velocidad media calibrada
+// CINTURONES DE VIENTO CON SENTIDOS ALTERNADOS DE ROTACIÓN (dir: 1 Horario / dir: -1 Antihorario)
 const WIND_BELTS = [
-  {
-    name: 'Chorro Polar Norte',
-    latBase: 62,
-    amplitude: 6,
-    waves: 4,
-    speed: 0.0008,
-    direction: 1,
-    color: '#06b6d4',
-    particleCount: 22,
-  },
-  {
-    name: 'Chorro Subtropical Norte',
-    latBase: 32,
-    amplitude: 4,
-    waves: 5,
-    speed: 0.0006,
-    direction: 1,
-    color: '#38bdf8',
-    particleCount: 18,
-  },
-  {
-    name: 'Vientos Alisios del Norte',
-    latBase: 15,
-    amplitude: 2,
-    waves: 3,
-    speed: -0.0004,
-    direction: -1,
-    color: '#34d399',
-    particleCount: 16,
-  },
-  {
-    name: 'Chorro Subtropical Sur',
-    latBase: -32,
-    amplitude: 5,
-    waves: 5,
-    speed: 0.0006,
-    direction: 1,
-    color: '#38bdf8',
-    particleCount: 18,
-  },
-  {
-    name: 'Chorro Polar Sur',
-    latBase: -60,
-    amplitude: 7,
-    waves: 4,
-    speed: 0.0007,
-    direction: 1,
-    color: '#06b6d4',
-    particleCount: 22,
-  },
+  { name: 'POLARES NORTE', lat: 72, waveAmplitude: 4, waveFreq: 3, speedDegPerSec: 12, dir: -1, count: 28, color: '#67e8f9' },
+  { name: 'JET STREAM / OESTES', lat: 50, waveAmplitude: 7, waveFreq: 4, speedDegPerSec: 22, dir: 1, count: 36, color: '#38bdf8' },
+  { name: 'ALISIOS DEL NORTE', lat: 20, waveAmplitude: 3, waveFreq: 3, speedDegPerSec: 10, dir: -1, count: 40, color: '#818cf8' },
+  { name: 'ALISIOS DEL SUR', lat: -20, waveAmplitude: 3, waveFreq: 3, speedDegPerSec: 10, dir: -1, count: 40, color: '#818cf8' },
+  { name: 'OESTES DEL SUR', lat: -50, waveAmplitude: 6, waveFreq: 4, speedDegPerSec: 20, dir: 1, count: 36, color: '#38bdf8' },
+  { name: 'POLARES SUR', lat: -72, waveAmplitude: 4, waveFreq: 3, speedDegPerSec: 12, dir: -1, count: 28, color: '#67e8f9' },
 ];
 
 export function drawWindCurrents(
   ctx,
-  activeLayers,
   centerX,
   centerY,
   mapRadius,
-  rotation,
-  time = Date.now()
+  rotation = 180,
+  animTime = 0,
+  isNeon = true
 ) {
-  if (!activeLayers?.windCurrents) return;
+  if (typeof centerX !== 'number' || typeof centerY !== 'number') return;
 
   ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, mapRadius, 0, Math.PI * 2);
+  ctx.clip();
+
+  const timeSec = animTime / 1000;
 
   WIND_BELTS.forEach((belt) => {
-    // 1. LÍNEA BASE GUÍA (ONDA DE ROSSBY)
-    ctx.strokeStyle = belt.color;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 6]);
-    ctx.globalAlpha = 0.3;
+    // Calculo del desplazamiento dinámico con dirección (dir: 1 o dir: -1)
+    const shiftAngle = (timeSec * belt.speedDegPerSec * belt.dir) % 360;
 
-    ctx.beginPath();
-    const steps = 180;
-    for (let i = 0; i <= steps; i++) {
-      const lon = -180 + (i / steps) * 360;
-      const radAngle = (lon * Math.PI) / 180;
+    for (let i = 0; i < belt.count; i++) {
+      const baseLon = ((i * (360 / belt.count) + shiftAngle) % 360) - 180;
+      const lonRad = (baseLon * Math.PI) / 180;
 
-      const wave = Math.sin(radAngle * belt.waves + time * belt.speed * belt.direction) * belt.amplitude;
-      const lat = belt.latBase + wave;
+      // Ondulaciones ondulatorias de Rossby
+      const latWave = belt.lat + Math.sin(lonRad * belt.waveFreq + timeSec * 0.8) * belt.waveAmplitude;
 
-      const { x, y } = latLonToPolar(lat, lon, mapRadius, rotation);
-      if (i === 0) ctx.moveTo(centerX + x, centerY + y);
-      else ctx.lineTo(centerX + x, centerY + y);
-    }
-    ctx.closePath();
-    ctx.stroke();
-
-    // 2. PARTÍCULAS / VECTORES DE VIENTO CINÉTICO
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 0.85;
-    ctx.shadowColor = belt.color;
-    ctx.shadowBlur = 5;
-
-    for (let p = 0; p < belt.particleCount; p++) {
-      const particleOffset = (p / belt.particleCount) * 360;
-      const currentLon = ((time * belt.speed * 35 * belt.direction + particleOffset) % 360) - 180;
-
-      const radAngle = (currentLon * Math.PI) / 180;
-      const wave = Math.sin(radAngle * belt.waves + time * belt.speed * belt.direction) * belt.amplitude;
-      const lat = belt.latBase + wave;
-
-      const { x, y } = latLonToPolar(lat, currentLon, mapRadius, rotation);
+      const { x, y } = latLonToPolar(latWave, baseLon, mapRadius, rotation);
       const px = centerX + x;
       const py = centerY + y;
 
-      const prevLon = currentLon - (3 * belt.direction);
-      const prevRad = (prevLon * Math.PI) / 180;
-      const prevWave = Math.sin(prevRad * belt.waves + time * belt.speed * belt.direction) * belt.amplitude;
-      const prevLat = belt.latBase + prevWave;
+      // Estela posicionada siempre detrás de la cabeza según la dirección de movimiento
+      const tailLon = baseLon - 5 * belt.dir;
+      const tailLonRad = (tailLon * Math.PI) / 180;
+      const tailLatWave = belt.lat + Math.sin(tailLonRad * belt.waveFreq + timeSec * 0.8) * belt.waveAmplitude;
 
-      const { x: px2, y: py2 } = latLonToPolar(prevLat, prevLon, mapRadius, rotation);
-      const tailX = centerX + px2;
-      const tailY = centerY + py2;
+      const tailPos = latLonToPolar(tailLatWave, tailLon, mapRadius, rotation);
+      const tx = centerX + tailPos.x;
+      const ty = centerY + tailPos.y;
 
-      const grad = ctx.createLinearGradient(tailX, tailY, px, py);
-      grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-      grad.addColorStop(1, belt.color);
+      if (isNaN(px) || isNaN(py) || isNaN(tx) || isNaN(ty)) continue;
 
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 1.8;
+      // Gradiente del vector
+      const grad = ctx.createLinearGradient(tx, ty, px, py);
+      grad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+      grad.addColorStop(1, isNeon ? belt.color : 'rgba(148, 163, 184, 0.75)');
+
       ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
+      ctx.moveTo(tx, ty);
       ctx.lineTo(px, py);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = isNeon ? 1.6 : 0.9;
+
+      if (isNeon) {
+        ctx.shadowColor = belt.color;
+        ctx.shadowBlur = 5;
+      } else {
+        ctx.shadowBlur = 0;
+      }
       ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
+      // Cabeza del vector de viento
       ctx.beginPath();
-      ctx.arc(px, py, 1.1, 0, Math.PI * 2);
+      ctx.arc(px, py, isNeon ? 1.4 : 0.9, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
       ctx.fill();
     }
-
-    // 3. ETIQUETA TELEMÉTRICA HUD
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-
-    const labelLon = ((time * belt.speed * 12 * belt.direction) % 360) - 180;
-    const { x: lx, y: ly } = latLonToPolar(belt.latBase, labelLon, mapRadius, rotation);
-
-    const labelX = centerX + lx;
-    const labelY = centerY + ly;
-
-    ctx.font = 'bold 8px monospace';
-    const text = `💨 ${belt.name.toUpperCase()}`;
-    const tw = ctx.measureText(text).width;
-
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
-    ctx.strokeStyle = belt.color;
-    ctx.lineWidth = 0.8;
-    ctx.roundRect(labelX - tw / 2 - 4, labelY - 7, tw + 8, 14, 3);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = belt.color;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, labelX, labelY);
   });
 
   ctx.restore();
