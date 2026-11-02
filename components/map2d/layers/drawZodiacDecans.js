@@ -1,21 +1,7 @@
 // components/map2d/layers/drawZodiacDecans.js
+import { ZODIAC_DECANS } from '@/lib/decansData';
 
-const ZODIAC_SIGNS = [
-  { name: 'ARIES', symbol: '♈', startDeg: 0, color: '#ef4444' },
-  { name: 'TAURO', symbol: '♉', startDeg: 30, color: '#10b981' },
-  { name: 'GÉMINIS', symbol: '♊', startDeg: 60, color: '#facc15' },
-  { name: 'CÁNCER', symbol: '♋', startDeg: 90, color: '#38bdf8' },
-  { name: 'LEO', symbol: '♌', startDeg: 120, color: '#f97316' },
-  { name: 'VIRGO', symbol: '♍', startDeg: 150, color: '#84cc16' },
-  { name: 'LIBRA', symbol: '♎', startDeg: 180, color: '#a855f7' },
-  { name: 'ESCORPIO', symbol: '♏', startDeg: 210, color: '#ec4899' },
-  { name: 'SAGITARIO', symbol: '♐', startDeg: 240, color: '#6366f1' },
-  { name: 'CAPRICORNIO', symbol: '♑', startDeg: 270, color: '#64748b' },
-  { name: 'ACUARIO', symbol: '♒', startDeg: 300, color: '#06b6d4' },
-  { name: 'PISCIS', symbol: '♓', startDeg: 330, color: '#3b82f6' }
-];
-
-function drawTextWithOutline(ctx, text, x, y, strokeColor = '#020617', strokeWidth = 3.5) {
+function drawTextWithOutline(ctx, text, x, y, strokeColor = '#020617', strokeWidth = 3.0) {
   ctx.lineJoin = 'round';
   ctx.miterLimit = 2;
   ctx.strokeStyle = strokeColor;
@@ -53,13 +39,13 @@ export function drawZodiacDecans(
     isNeon = isNeonParam;
   }
 
-  const showZodiac =
+  const showDecans =
     activeLayers?.zodiacDecans ||
-    activeLayers?.zodiac ||
-    activeLayers?.decanatosZodiacales ||
+    activeLayers?.decanos ||
+    activeLayers?.decanatos ||
     false;
 
-  if (!showZodiac) return;
+  if (!showDecans) return;
   if (typeof centerX !== 'number' || typeof centerY !== 'number') return;
 
   ctx.save();
@@ -68,88 +54,68 @@ export function drawZodiacDecans(
   ctx.clip();
 
   const rotationRad = ((rotation || 180) * Math.PI) / 180;
-  const outerR = mapRadius * 0.96;
-  const innerR = mapRadius * 0.88;
 
-  // 1. Corona Perimetral del Zodíaco
+  // Banda concéntrica para los 36 decanatos (Franja exterior ultra-precisa)
+  const outerR = mapRadius * 0.995;
+  const innerR = mapRadius * 0.94;
+
+  // Fondo sutil para el anillo de decanatos
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, outerR, 0, Math.PI * 2, false);
+  ctx.arc(centerX, centerY, innerR, 0, Math.PI * 2, true);
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+  ctx.fill();
+  ctx.restore();
+
+  // Renderizado de las 36 divisiones de 10°
+  ZODIAC_DECANS.forEach((decan) => {
+    // Offset de +180° para alinear el 0° con el Ascendente (horizontal izquierda)
+    const startAngleRad = ((decan.startDeg + 180) * Math.PI) / 180 + rotationRad;
+    const endAngleRad = ((decan.endDeg + 180) * Math.PI) / 180 + rotationRad;
+    const midAngleRad = (startAngleRad + endAngleRad) / 2;
+
+    // 1. Líneas divisorias de 10°
+    const x1 = centerX + Math.cos(startAngleRad) * innerR;
+    const y1 = centerY + Math.sin(startAngleRad) * innerR;
+    const x2 = centerX + Math.cos(startAngleRad) * outerR;
+    const y2 = centerY + Math.sin(startAngleRad) * outerR;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = isNeon ? 'rgba(56, 189, 248, 0.4)' : 'rgba(148, 163, 184, 0.3)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Rótulos D1 a D36 dentro de la banda exterior
+    const midR = (innerR + outerR) / 2;
+    const tx = centerX + Math.cos(midAngleRad) * midR;
+    const ty = centerY + Math.sin(midAngleRad) * midR;
+
+    ctx.save();
+    ctx.font = 'bold 7.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+
+    drawTextWithOutline(ctx, decan.label, tx, ty, '#020617', 2.8);
+    ctx.restore();
+  });
+
+  // Bordes perimetrales del anillo
   ctx.save();
   ctx.beginPath();
   ctx.arc(centerX, centerY, outerR, 0, Math.PI * 2);
   ctx.arc(centerX, centerY, innerR, 0, Math.PI * 2);
-  ctx.strokeStyle = isNeon ? 'rgba(168, 85, 247, 0.5)' : 'rgba(147, 51, 234, 0.3)';
-  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = isNeon ? '#38bdf8' : '#0284c7';
+  ctx.lineWidth = 1.0;
   ctx.stroke();
   ctx.restore();
 
-  // 2. Trazado de los 36 Decanatos (Cada 10°) y 12 Signos (Cada 30°)
-  for (let deg = 0; deg < 360; deg += 10) {
-    const angleRad = (deg * Math.PI) / 180 + rotationRad;
-    const cosA = Math.cos(angleRad);
-    const sinA = Math.sin(angleRad);
-
-    const isSignBoundary = deg % 30 === 0;
-
-    const xStart = centerX + cosA * (isSignBoundary ? mapRadius * 0.2 : innerR);
-    const yStart = centerY + sinA * (isSignBoundary ? mapRadius * 0.2 : innerR);
-    const xEnd = centerX + cosA * outerR;
-    const yEnd = centerY + sinA * outerR;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(xStart, yStart);
-    ctx.lineTo(xEnd, yEnd);
-    ctx.strokeStyle = isSignBoundary 
-      ? (isNeon ? '#a855f7' : '#7e22ce')
-      : 'rgba(148, 163, 184, 0.25)';
-    ctx.lineWidth = isSignBoundary ? 1.4 : 0.7;
-    ctx.setLineDash(isSignBoundary ? [] : [3, 3]);
-
-    if (isNeon && isSignBoundary) {
-      ctx.shadowColor = '#a855f7';
-      ctx.shadowBlur = 6;
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    // Rótulo del número de Decanato (1 a 36)
-    const decanIndex = Math.floor(deg / 10) + 1;
-    const midAngle = ((deg + 5) * Math.PI) / 180 + rotationRad;
-    const decanTx = centerX + Math.cos(midAngle) * ((innerR + outerR) / 2);
-    const decanTy = centerY + Math.sin(midAngle) * ((innerR + outerR) / 2);
-
-    ctx.save();
-    ctx.font = 'bold 6.5px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-
-    drawTextWithOutline(ctx, `D${decanIndex}`, decanTx, decanTy, '#020617', 2.5);
-    ctx.restore();
-  }
-
-  // 3. Rótulos de los 12 Signos Zodiacales
-  ZODIAC_SIGNS.forEach((sign) => {
-    const midSignDeg = sign.startDeg + 15;
-    const signAngleRad = (midSignDeg * Math.PI) / 180 + rotationRad;
-    const labelDist = mapRadius * 0.84;
-
-    const lx = centerX + Math.cos(signAngleRad) * labelDist;
-    const ly = centerY + Math.sin(signAngleRad) * labelDist;
-
-    ctx.save();
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-
-    drawTextWithOutline(ctx, `${sign.symbol} ${sign.name}`, lx, ly, '#020617', 3.8);
-
-    ctx.font = 'bold 7px monospace';
-    ctx.fillStyle = sign.color;
-    drawTextWithOutline(ctx, `${sign.startDeg}°-${sign.startDeg + 30}°`, lx, ly + 9, '#020617', 2.5);
-
-    ctx.restore();
-  });
-
   ctx.restore();
 }
+
+export default drawZodiacDecans;

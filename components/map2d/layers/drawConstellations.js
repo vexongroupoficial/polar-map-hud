@@ -1,218 +1,228 @@
-import { latLonToPolar } from '@/lib/polarMath';
+// components/map2d/layers/drawConstellations.js
+import { ZODIAC_CONSTELLATIONS } from '@/lib/constellationData';
 
-// Catálogo de estrellas principales y líneas de asterismo para las 12 constelaciones zodiacales
-const ZODIAC_CONSTELLATIONS = [
-  {
-    id: 'aries', name: 'ARIES', symbol: '♈', color: '#f87171',
-    stars: [
-      { name: 'Hamal', ra: 31.7, dec: 23.4, mag: 2.0 },
-      { name: 'Sheratan', ra: 28.7, dec: 20.8, mag: 2.6 },
-      { name: 'Mesarthim', ra: 27.9, dec: 19.3, mag: 3.8 },
-      { name: '41 Arietis', ra: 42.4, dec: 27.3, mag: 3.6 }
-    ],
-    lines: [[0, 1], [1, 2], [0, 3]]
-  },
-  {
-    id: 'taurus', name: 'TAURO', symbol: '♉', color: '#4ade80',
-    stars: [
-      { name: 'Aldebarán', ra: 68.9, dec: 16.5, mag: 0.85 },
-      { name: 'Elnath', ra: 81.6, dec: 28.6, mag: 1.65 },
-      { name: 'Tianguan', ra: 84.4, dec: 21.1, mag: 3.0 },
-      { name: 'Ain', ra: 67.1, dec: 19.2, mag: 3.5 },
-      { name: 'Alcyone (Pléyades)', ra: 56.9, dec: 24.1, mag: 2.8 }
-    ],
-    lines: [[0, 3], [3, 4], [0, 2], [2, 1]]
-  },
-  {
-    id: 'gemini', name: 'GÉMINIS', symbol: '♊', color: '#fef08a',
-    stars: [
-      { name: 'Pólux', ra: 116.2, dec: 28.0, mag: 1.14 },
-      { name: 'Cástor', ra: 113.6, dec: 31.9, mag: 1.58 },
-      { name: 'Alhena', ra: 99.4, dec: 16.4, mag: 1.9 },
-      { name: 'Wasat', ra: 110.0, dec: 21.9, mag: 3.5 },
-      { name: 'Mebsuta', ra: 100.9, dec: 25.1, mag: 3.0 }
-    ],
-    lines: [[1, 0], [0, 3], [3, 2], [1, 4]]
-  },
-  {
-    id: 'cancer', name: 'CÁNCER', symbol: '♋', color: '#c084fc',
-    stars: [
-      { name: 'Tarf', ra: 124.1, dec: 9.2, mag: 3.5 },
-      { name: 'Asellus Australis', ra: 128.6, dec: 18.1, mag: 3.9 },
-      { name: 'Asellus Borealis', ra: 128.3, dec: 21.5, mag: 4.6 },
-      { name: 'Acubens', ra: 134.7, dec: 11.8, mag: 4.2 }
-    ],
-    lines: [[0, 1], [1, 2], [1, 3]]
-  },
-  {
-    id: 'leo', name: 'LEO', symbol: '♌', color: '#fb923c',
-    stars: [
-      { name: 'Régulo', ra: 152.1, dec: 11.9, mag: 1.36 },
-      { name: 'Denebola', ra: 177.3, dec: 14.6, mag: 2.14 },
-      { name: 'Algieba', ra: 155.0, dec: 19.8, mag: 2.0 },
-      { name: 'Zosma', ra: 168.5, dec: 20.5, mag: 2.56 },
-      { name: 'Adhafera', ra: 154.2, dec: 23.8, mag: 3.4 }
-    ],
-    lines: [[0, 2], [2, 4], [2, 3], [3, 1], [0, 1]]
-  },
-  {
-    id: 'virgo', name: 'VIRGO', symbol: '♍', color: '#a7f3d0',
-    stars: [
-      { name: 'Espica', ra: 201.3, dec: -11.2, mag: 0.98 },
-      { name: 'Porrima', ra: 190.4, dec: -1.4, mag: 2.74 },
-      { name: 'Vindemiatrix', ra: 195.5, dec: 10.9, mag: 2.8 },
-      { name: 'Zavijava', ra: 177.7, dec: 1.8, mag: 3.6 },
-      { name: 'Heze', ra: 203.1, dec: -0.6, mag: 3.4 }
-    ],
-    lines: [[0, 4], [4, 1], [1, 3], [1, 2]]
-  },
-  {
-    id: 'libra', name: 'LIBRA', symbol: '♎', color: '#f472b6',
-    stars: [
-      { name: 'Zubeneschamali', ra: 229.2, dec: -9.4, mag: 2.6 },
-      { name: 'Zubenelgenubi', ra: 222.7, dec: -16.0, mag: 2.75 },
-      { name: 'Zubenelhakrabi', ra: 233.1, dec: -14.8, mag: 3.9 },
-      { name: 'Brachium', ra: 226.6, dec: -25.2, mag: 3.2 }
-    ],
-    lines: [[1, 0], [0, 2], [2, 1], [1, 3]]
-  },
-  {
-    id: 'scorpius', name: 'ESCORPIO', symbol: '♏', color: '#e11d48',
-    stars: [
-      { name: 'Antares', ra: 247.4, dec: -26.4, mag: 1.05 },
-      { name: 'Graffias', ra: 241.3, dec: -19.8, mag: 2.5 },
-      { name: 'Dschubba', ra: 240.1, dec: -22.6, mag: 2.2 },
-      { name: 'Sargas', ra: 264.3, dec: -43.0, mag: 1.86 },
-      { name: 'Shaula', ra: 263.4, dec: -37.1, mag: 1.62 }
-    ],
-    lines: [[1, 2], [2, 0], [0, 4], [4, 3]]
-  },
-  {
-    id: 'sagittarius', name: 'SAGITARIO', symbol: '♐', color: '#fbbf24',
-    stars: [
-      { name: 'Kaus Australis', ra: 276.0, dec: -34.4, mag: 1.79 },
-      { name: 'Nunki', ra: 283.8, dec: -26.3, mag: 2.05 },
-      { name: 'Ascella', ra: 286.2, dec: -29.9, mag: 2.6 },
-      { name: 'Kaus Media', ra: 275.2, dec: -29.8, mag: 2.7 },
-      { name: 'Kaus Borealis', ra: 277.0, dec: -25.4, mag: 2.82 }
-    ],
-    lines: [[0, 3], [3, 4], [4, 1], [1, 2], [2, 0], [3, 1]]
-  },
-  {
-    id: 'capricornus', name: 'CAPRICORNIO', symbol: '♑', color: '#94a3b8',
-    stars: [
-      { name: 'Deneb Algedi', ra: 326.8, dec: -16.1, mag: 2.8 },
-      { name: 'Dabih', ra: 305.2, dec: -14.8, mag: 3.0 },
-      { name: 'Algedi', ra: 304.5, dec: -12.5, mag: 3.5 },
-      { name: 'Nashira', ra: 325.2, dec: -16.6, mag: 3.68 }
-    ],
-    lines: [[2, 1], [1, 3], [3, 0]]
-  },
-  {
-    id: 'aquarius', name: 'ACUARIO', symbol: '22d3ee', color: '#22d3ee',
-    stars: [
-      { name: 'Sadalsuud', ra: 323.0, dec: -5.6, mag: 2.9 },
-      { name: 'Sadalmelik', ra: 331.4, dec: -0.3, mag: 2.95 },
-      { name: 'Skaat', ra: 342.2, dec: -15.8, mag: 3.2 },
-      { name: 'Sadachbia', ra: 335.9, dec: -1.4, mag: 3.8 }
-    ],
-    lines: [[0, 1], [1, 3], [3, 2]]
-  },
-  {
-    id: 'pisces', name: 'PISCIS', symbol: '♓', color: '#38bdf8',
-    stars: [
-      { name: 'Alrescha', ra: 30.0, dec: 2.7, mag: 3.8 },
-      { name: 'Fum al Samakah', ra: 345.0, dec: 7.6, mag: 4.5 },
-      { name: 'Linteum', ra: 22.0, dec: 8.0, mag: 4.3 },
-      { name: 'Kaht', ra: 1.0, dec: 15.3, mag: 4.2 }
-    ],
-    lines: [[1, 3], [3, 0], [0, 2]]
-  }
-];
+function drawTextWithOutline(ctx, text, x, y, strokeColor = '#020617', strokeWidth = 3.5) {
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = strokeWidth;
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
+}
+
+function drawConstellationBadge(ctx, anchorX, anchorY, badgeX, badgeY, symbol, title, mainStar, color) {
+  // Conector vectorial punteado desde las estrellas hacia el badge
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(anchorX, anchorY);
+  ctx.lineTo(badgeX, badgeY);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.0;
+  ctx.setLineDash([3, 3]);
+  ctx.globalAlpha = 0.7;
+  ctx.stroke();
+
+  // Nodo indicador central
+  ctx.beginPath();
+  ctx.arc(anchorX, anchorY, 3.2, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // Caja HUD
+  ctx.save();
+  ctx.font = 'bold 8.5px monospace';
+  const textTitle = `${symbol} ${title}`;
+  const width1 = ctx.measureText(textTitle).width;
+
+  ctx.font = 'bold 7px monospace';
+  const textSub = `ESTRELLA: ${mainStar.toUpperCase()}`;
+  const width2 = ctx.measureText(textSub).width;
+
+  const boxW = Math.max(width1, width2) + 12;
+  const boxH = 22;
+
+  const rectX = badgeX - boxW / 2;
+  const rectY = badgeY - boxH / 2;
+
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.0;
+
+  ctx.beginPath();
+  ctx.roundRect(rectX, rectY, boxW, boxH, 3);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = 'bold 8.5px monospace';
+  ctx.fillStyle = '#ffffff';
+  drawTextWithOutline(ctx, textTitle, badgeX, rectY + 6.0, '#020617', 3.0);
+
+  ctx.font = 'bold 7px monospace';
+  ctx.fillStyle = color;
+  drawTextWithOutline(ctx, textSub, badgeX, rectY + 15.0, '#020617', 2.5);
+
+  ctx.restore();
+}
 
 export function drawConstellations(
   ctx,
-  activeLayers,
-  centerX,
-  centerY,
-  mapRadius,
-  rotation
+  activeLayersOrCenterX,
+  centerXOrY,
+  mapRadiusOrRot,
+  rotationOrAnimTime = 180,
+  animTimeOrNeon = 0,
+  isNeonParam = true
 ) {
-  if (!activeLayers?.constellations) return;
+  let activeLayers = {};
+  let centerX, centerY, mapRadius, rotation, animTime, isNeon;
+
+  if (typeof activeLayersOrCenterX === 'object' && activeLayersOrCenterX !== null) {
+    activeLayers = activeLayersOrCenterX;
+    centerX = centerXOrY;
+    centerY = mapRadiusOrRot;
+    mapRadius = rotationOrAnimTime;
+    rotation = animTimeOrNeon || 180;
+    animTime = isNeonParam || 0;
+    isNeon = true;
+  } else {
+    centerX = activeLayersOrCenterX;
+    centerY = centerXOrY;
+    mapRadius = mapRadiusOrRot;
+    rotation = rotationOrAnimTime;
+    animTime = animTimeOrNeon;
+    isNeon = isNeonParam;
+  }
+
+  const showConstellations =
+    activeLayers?.constellations ||
+    activeLayers?.constelaciones ||
+    false;
+
+  if (!showConstellations) return;
+  if (typeof centerX !== 'number' || typeof centerY !== 'number') return;
 
   ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, mapRadius, 0, Math.PI * 2);
+  ctx.clip();
+
+  const timeSec = (typeof animTime === 'number' && !isNaN(animTime) ? animTime : Date.now()) / 1000;
+  
+  // 🎯 Sincronización Angular con el Ascendente (0° en la horizontal izquierda)
+  const baseRotationRad = ((rotation || 180) * Math.PI) / 180;
 
   ZODIAC_CONSTELLATIONS.forEach((constellation) => {
-    // 1. Convertir estrellas celestes a coordenadas del lienzo polar Canvas
-    const canvasStars = constellation.stars.map((star) => {
-      const pos = latLonToPolar(star.dec, star.ra - 180, mapRadius, rotation);
+    // Proyección trigonométrica polar directa respecto al eje del Ascendente
+    const projectedStars = constellation.stars.map((star) => {
+      // Radio proporcional a la latitud simulada
+      const r = ((90 - star.lat) / 180) * mapRadius * 0.78;
+      // Ángulo en radianes desfasado al Ascendente (0° a la izquierda)
+      const starAngleRad = ((star.lon + 180) * Math.PI) / 180 + baseRotationRad;
+
       return {
-        x: centerX + pos.x,
-        y: centerY + pos.y,
+        px: centerX + Math.cos(starAngleRad) * r,
+        py: centerY + Math.sin(starAngleRad) * r,
         mag: star.mag,
         name: star.name
       };
     });
 
-    // 2. Trazo de líneas de asterismo en Neón
-    ctx.save();
-    ctx.strokeStyle = constellation.color;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.45;
-    ctx.setLineDash([2, 2]);
+    const avgX = projectedStars.reduce((acc, s) => acc + s.px, 0) / projectedStars.length;
+    const avgY = projectedStars.reduce((acc, s) => acc + s.py, 0) / projectedStars.length;
 
-    constellation.lines.forEach(([startIndex, endIndex]) => {
-      const p1 = canvasStars[startIndex];
-      const p2 = canvasStars[endIndex];
-      if (p1 && p2) {
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
+    if (Math.hypot(avgX - centerX, avgY - centerY) > mapRadius - 4) return;
+
+    // 1. Trazado de Asterismos (Líneas neón entre estrellas)
+    ctx.save();
+    constellation.lines.forEach(([i1, i2]) => {
+      const p1 = projectedStars[i1];
+      const p2 = projectedStars[i2];
+      if (!p1 || !p2) return;
+
+      ctx.beginPath();
+      ctx.moveTo(p1.px, p1.py);
+      ctx.lineTo(p2.px, p2.py);
+      ctx.strokeStyle = constellation.color;
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 2]);
+
+      if (isNeon) {
+        ctx.shadowColor = constellation.color;
+        ctx.shadowBlur = 10;
       }
+      ctx.stroke();
     });
     ctx.restore();
 
-    // 3. Renderizado de estrellas (Puntos luminosos con resplandor)
-    canvasStars.forEach((star) => {
-      const starRadius = Math.max(1.2, 3.8 - star.mag * 0.6);
+    // 2. Renderizado de Estrellas físicamente ubicadas en la Casa
+    projectedStars.forEach((star) => {
+      const starRadius = Math.max(3.8, (4.5 - star.mag) * 2.2);
+      const twinkle = 0.85 + Math.sin(timeSec * 3.5 + star.px) * 0.15;
 
       ctx.save();
-      const glow = ctx.createRadialGradient(star.x, star.y, 0.5, star.x, star.y, starRadius * 3);
-      glow.addColorStop(0, '#ffffff');
-      glow.addColorStop(0.4, constellation.color);
-      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      if (isNeon) {
+        ctx.beginPath();
+        ctx.arc(star.px, star.py, starRadius * 2.4 * twinkle, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${hexToRgb(constellation.color)}, 0.35)`;
+        ctx.fill();
+      }
 
-      ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(star.x, star.y, starRadius * 3, 0, Math.PI * 2);
-      ctx.fill();
-
+      ctx.arc(star.px, star.py, starRadius * twinkle, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(star.x, star.y, starRadius, 0, Math.PI * 2);
+
+      if (isNeon) {
+        ctx.shadowColor = constellation.color;
+        ctx.shadowBlur = 14;
+      }
       ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(star.px, star.py, starRadius * twinkle, 0, Math.PI * 2);
+      ctx.strokeStyle = constellation.color;
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
       ctx.restore();
     });
 
-    // 4. Etiqueta con Símbolo e Ideograma en el centro ideológico de la constelación
-    if (canvasStars.length > 0) {
-      const avgX = canvasStars.reduce((sum, s) => sum + s.x, 0) / canvasStars.length;
-      const avgY = canvasStars.reduce((sum, s) => sum + s.y, 0) / canvasStars.length;
+    // 3. Ubicación del Badge en la franja interna de su Casa
+    const angleFromCenter = Math.atan2(avgY - centerY, avgX - centerX);
+    const badgeRadius = mapRadius * 0.74;
 
-      ctx.save();
-      ctx.font = 'bold 11px monospace';
-      ctx.fillStyle = constellation.color;
-      ctx.textAlign = 'center';
-      ctx.shadowColor = constellation.color;
-      ctx.shadowBlur = 8;
-      ctx.fillText(`${constellation.symbol} ${constellation.name}`, avgX, avgY - 8);
-      ctx.restore();
-    }
+    const badgeX = centerX + Math.cos(angleFromCenter) * badgeRadius;
+    const badgeY = centerY + Math.sin(angleFromCenter) * badgeRadius;
+
+    drawConstellationBadge(
+      ctx,
+      avgX,
+      avgY,
+      badgeX,
+      badgeY,
+      constellation.symbol,
+      constellation.name,
+      constellation.mainStar,
+      constellation.color
+    );
   });
 
   ctx.restore();
 }
 
-// Exportación por defecto para asegurar compatibilidad total
+function hexToRgb(hex) {
+  const cleanHex = hex.replace('#', '');
+  const bigint = parseInt(cleanHex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `${r}, ${g}, ${b}`;
+}
+
 export default drawConstellations;

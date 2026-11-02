@@ -1,4 +1,3 @@
-// components/map2d/PolarCanvas.jsx
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
@@ -59,8 +58,9 @@ import { drawPlanets } from './layers/drawPlanets';
 import { drawEnochCalendar } from './layers/drawEnochCalendar';
 import { drawZodiacDecans } from './layers/drawZodiacDecans';
 import { drawConstellations } from './layers/drawConstellations';
-import { drawGrandAlignment } from './layers/drawGrandAlignment';
+import { drawPrecessionalEras } from './layers/drawPrecessionalEras';
 import { drawMoonPhases } from './layers/drawMoonPhases';
+import { drawZodiacHouses } from './layers/drawZodiacHouses';
 
 // 7. Geometría Sagrada
 import { drawSacredGeometry } from './layers/drawSacredGeometry';
@@ -803,9 +803,52 @@ export default function PolarCanvas({
         drawSunlight(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
       }
       drawAstronomy(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
-      drawPlanets(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);    
-      drawConstellations(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
-      drawGrandAlignment(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime);
+      drawPlanets(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, simulatedTime); 
+      
+        if (activeLayers?.constellations || activeLayers?.constelaciones) {
+          drawConstellations(
+            ctx,
+            activeLayers,
+            centerX,
+            centerY,
+            mapRadius,
+            internalRotation,
+            animTime,
+            isNeon
+          );
+        }
+
+      if (activeLayers?.precessionalEras || activeLayers?.eras) {
+        drawPrecessionalEras(
+          ctx, 
+          activeLayers, 
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation, 
+          simulatedTime,
+          
+        );
+      }
+
+      if (
+        activeLayers?.zodiacHouses ||
+        activeLayers?.houses ||
+        activeLayers?.casasZodiacales ||
+        activeLayers?.casas
+      ) {
+        drawZodiacHouses(
+          ctx,
+          activeLayers,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          animTime,
+          isNeon
+        );
+      }
+
 
         if (activeLayers?.moonPhases || activeLayers?.moon || activeLayers?.fasesDeLaLuna) {
           drawMoonPhases(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
