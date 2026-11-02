@@ -61,6 +61,10 @@ import { drawConstellations } from './layers/drawConstellations';
 import { drawPrecessionalEras } from './layers/drawPrecessionalEras';
 import { drawMoonPhases } from './layers/drawMoonPhases';
 import { drawZodiacHouses } from './layers/drawZodiacHouses';
+import { drawPolarCoreConstellations } from './layers/drawPolarCoreConstellations';
+import { drawPolarIntermediateConstellations } from './layers/drawPolarIntermediateConstellations';
+import { drawPolarSouthernConstellations } from './layers/drawPolarSouthernConstellations';
+import { drawConstellationBorders } from './layers/drawConstellationBorders';
 
 // 7. Geometría Sagrada
 import { drawSacredGeometry } from './layers/drawSacredGeometry';
@@ -723,13 +727,27 @@ export default function PolarCanvas({
       
       // 🛑 CONDICIÓN ESTRICTA: La Rosa de los Vientos y Coordenadas solo se dibujan si la capa está activa
       if (activeLayers?.graticule || activeLayers?.compassRose) {
-        drawCompassRose(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation);
+        drawCompassRose(
+          ctx, 
+          activeLayers, 
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation
+        );
       }
 
       if (activeLayers?.measure) {
-        drawMeasurements(ctx, measurePoints, activeLayers, centerX, centerY, mapRadius, internalRotation);
+        drawMeasurements(
+          ctx, 
+          measurePoints, 
+          activeLayers, 
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation
+        );
       }
-
 
       if (
           activeLayers?.radarSweep ||
@@ -849,18 +867,88 @@ export default function PolarCanvas({
         );
       }
 
-
         if (activeLayers?.moonPhases || activeLayers?.moon || activeLayers?.fasesDeLaLuna) {
-          drawMoonPhases(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
+          drawMoonPhases(
+            ctx, 
+            activeLayers, 
+            centerX, 
+            centerY, 
+            mapRadius,
+            internalRotation,
+            animTime, 
+            isNeon
+          );
         }
 
         if (activeLayers?.enochCalendar || activeLayers?.enoch || activeLayers?.calendarioDeEnoc) {
-          drawEnochCalendar(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
+          drawEnochCalendar(
+            ctx, 
+            activeLayers, 
+            centerX, 
+            centerY, 
+            mapRadius, 
+            internalRotation, 
+            animTime, 
+            isNeon
+          );
         }
 
         if (activeLayers?.zodiacDecans || activeLayers?.zodiac || activeLayers?.decanatosZodiacales) {
-          drawZodiacDecans(ctx, activeLayers, centerX, centerY, mapRadius, internalRotation, animTime, isNeon);
-}
+          drawZodiacDecans(
+            ctx, 
+            activeLayers, 
+            centerX, 
+            centerY, 
+            mapRadius, 
+            internalRotation, 
+            animTime, 
+            isNeon
+          );
+        }
+
+        if (activeLayers?.coreConstellations || activeLayers?.constelacionesNuclearesPolos || activeLayers?.circumpolar) {
+          drawPolarCoreConstellations(
+            ctx,
+            activeLayers,            
+            centerX,
+            centerY,
+            mapRadius,
+            internalRotation
+          );
+        }
+      if (activeLayers?.interConstellations || activeLayers?.constelacionesIntermedias) {
+        drawPolarIntermediateConstellations(
+          ctx, 
+          activeLayers, 
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation,
+          animTime,
+          isNeon,
+          internalZoom,
+        );  
+      }
+      if (activeLayers?.southernConstellations || activeLayers?.australConstellations || activeLayers?.constelacionesAustrales) {
+      drawPolarSouthernConstellations(
+        ctx, 
+        activeLayers, 
+        centerX, 
+        centerY, 
+        mapRadius, 
+        internalRotation, 
+        internalZoom);
+      }
+
+      if (activeLayers?.constellationBorders || activeLayers?.bordesDeConstelaciones) {
+        drawConstellationBorders(
+          ctx,
+          activeLayers,
+          centerX,
+          centerY,
+          mapRadius
+        );
+      }
 
 
       // -------------------------------------------------------------
