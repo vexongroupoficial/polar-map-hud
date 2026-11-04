@@ -74,7 +74,10 @@ import { drawHebrewShabbat } from './layers/drawHebrewShabbat';
 import { drawHebrewFeasts } from './layers/drawHebrewFeasts';
 import { drawHebrewRoshChodesh } from './layers/drawHebrewRoshChodesh';
 import { drawHebrewTribes } from './layers/drawHebrewTribes';
-
+import { drawHebrewMazalot } from './layers/drawHebrewMazalot';
+import { drawHebrewMishmarot } from './layers/drawHebrewMishmarot';
+import { drawHebrewLevites } from './layers/drawHebrewLevites';
+import { drawHebrewOtiyot } from './layers/drawHebrewOtiyot';
 
 // 8. Geometría Sagrada
 import { drawSacredGeometry } from './layers/drawSacredGeometry';
@@ -1049,6 +1052,57 @@ if (activeLayers?.hebrewTribes || activeLayers?.tribus || activeLayers?.tribusHe
     isNeon
   );
 }
+
+if (activeLayers?.hebrewMazalot || activeLayers?.mazalotHebreos) {
+  drawHebrewMazalot(
+    ctx,
+    activeLayers,
+    centerX,
+    centerY,
+    mapRadius,
+    internalRotation,
+    animTime,
+    isNeon
+  );
+}
+if (activeLayers?.hebrewMishmarot || activeLayers?.mishmarotHebreos) {
+  drawHebrewMishmarot(
+    ctx,
+    activeLayers,
+    centerX,
+    centerY,
+    mapRadius,
+    internalRotation,
+    animTime,
+    isNeon
+  );
+}
+
+if (activeLayers?.hebrewLevites || activeLayers?.clanesLeviticos) {
+  drawHebrewLevites(
+    ctx,
+    activeLayers,
+    centerX,
+    centerY,
+    mapRadius,
+    internalRotation,
+    animTime,
+    isNeon
+  );
+}
+if (activeLayers?.hebrewOtiyot || activeLayers?.letrasHebreas) {
+  drawHebrewOtiyot(
+    ctx,
+    activeLayers,
+    centerX,
+    centerY,
+    mapRadius,
+    internalRotation,
+    animTime,
+    isNeon
+  );
+}
+
 
       // -------------------------------------------------------------
       // CATEGORÍA 7: GEOMETRÍA SAGRADA (ENGINE CENTRALIZADO)
