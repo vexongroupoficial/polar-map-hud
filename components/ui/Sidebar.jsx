@@ -13,7 +13,6 @@ function Sidebar({
 }) {
   const [collapsedCategories, setCollapsedCategories] = useState({});
 
-  // Pre-agrupar categorías una sola vez en memoria para evitar re-calculos y bucles
   const layersByCategory = useMemo(() => {
     const categories = Object.values(MAP_LAYER_CATEGORIES || {});
     const grouped = {};
@@ -41,7 +40,6 @@ function Sidebar({
 
   return (
     <>
-      {/* OVERLAY PARA CERRAR EN MÓVIL Y TABLET */}
       {isOpen && (
         <div
           onClick={onClose}
@@ -49,7 +47,6 @@ function Sidebar({
         />
       )}
 
-      {/* CONTENEDOR PRINCIPAL */}
       <aside
         className={`
           fixed top-0 bottom-0 left-0 z-50
@@ -60,7 +57,6 @@ function Sidebar({
           ${isCollapsed ? 'lg:w-16' : 'w-80'}
         `}
       >
-        {/* ENCABEZADO CON BOTONES DE ACCIÓN */}
         <div className="mb-3 border-b border-cyan-500/30 pb-2 flex items-center justify-between shrink-0">
           {!isCollapsed ? (
             <div className="flex items-center gap-2 overflow-hidden">
@@ -74,7 +70,6 @@ function Sidebar({
           )}
 
           <div className="flex items-center gap-1">
-            {/* Ocultar / Colapsar en PC */}
             <button
               type="button"
               onClick={onToggleCollapse}
@@ -84,7 +79,6 @@ function Sidebar({
               {isCollapsed ? '⏩' : '⏪'}
             </button>
 
-            {/* Cerrar en Móvil y Tablet */}
             <button
               type="button"
               onClick={onClose}
@@ -96,7 +90,6 @@ function Sidebar({
           </div>
         </div>
 
-        {/* LISTADO DE CAPAS */}
         {!isCollapsed ? (
           <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-slate-950">
             {layersByCategory.categories.map((catName) => {
@@ -169,14 +162,14 @@ function Sidebar({
                               <div
                                 className={`w-8 h-4 rounded-full transition-colors duration-200 ease-in-out border ${
                                   isActive
-                                    ? 'bg-cyan-500/30 border-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]'
+                                    ? 'bg-amber-500/30 border-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]'
                                     : 'bg-slate-800 border-slate-700'
                                 }`}
                               >
                                 <div
                                   className={`w-3 h-3 rounded-full transform transition-transform duration-200 ease-in-out mt-[1px] ${
                                     isActive
-                                      ? 'translate-x-4 bg-cyan-400 shadow-[0_0_6px_#22d3ee]'
+                                      ? 'translate-x-4 bg-amber-400 shadow-[0_0_6px_#fbbf24]'
                                       : 'translate-x-0.5 bg-slate-500'
                                   }`}
                                 />
@@ -204,7 +197,6 @@ function Sidebar({
           </div>
         )}
 
-        {/* PIE */}
         <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-400 shrink-0">
           {!isCollapsed ? (
             <>

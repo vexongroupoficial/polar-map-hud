@@ -65,8 +65,18 @@ import { drawPolarCoreConstellations } from './layers/drawPolarCoreConstellation
 import { drawPolarIntermediateConstellations } from './layers/drawPolarIntermediateConstellations';
 import { drawPolarSouthernConstellations } from './layers/drawPolarSouthernConstellations';
 import { drawConstellationBorders } from './layers/drawConstellationBorders';
+import { drawSchumannResonance } from './layers/drawSchumannResonance';
+import { drawAuroraAustral } from './layers/drawAuroraAustral';
 
-// 7. Geometría Sagrada
+//7. Calendario Hebreo
+import { drawHebrewCalendar } from './layers/drawHebrewCalendar';
+import { drawHebrewShabbat } from './layers/drawHebrewShabbat';
+import { drawHebrewFeasts } from './layers/drawHebrewFeasts';
+import { drawHebrewRoshChodesh } from './layers/drawHebrewRoshChodesh';
+import { drawHebrewTribes } from './layers/drawHebrewTribes';
+
+
+// 8. Geometría Sagrada
 import { drawSacredGeometry } from './layers/drawSacredGeometry';
 
 
@@ -572,6 +582,29 @@ export default function PolarCanvas({
           internalZoom
         );
       }  
+
+      if (activeLayers?.auroraAustral) {
+        drawAuroraAustral(
+          ctx, 
+          activeLayers, 
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation, 
+          animTime
+        );
+      }
+      if (activeLayers?.schumannResonance) {
+        drawSchumannResonance(
+          ctx, 
+          activeLayers,
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation, 
+          animTime
+        );
+      }
   
         // -------------------------------------------------------------
         // CATEGORÍA 4: ANOMALÍAS Y FENÓMENOS ATMOSFÉRICOS
@@ -644,8 +677,7 @@ export default function PolarCanvas({
               internalRotation, 
               animTime, 
               isNeon
-            
-            );
+            );        
           }
 
           // 🌊 3. Anomalías ENSO
@@ -880,18 +912,6 @@ export default function PolarCanvas({
           );
         }
 
-        if (activeLayers?.enochCalendar || activeLayers?.enoch || activeLayers?.calendarioDeEnoc) {
-          drawEnochCalendar(
-            ctx, 
-            activeLayers, 
-            centerX, 
-            centerY, 
-            mapRadius, 
-            internalRotation, 
-            animTime, 
-            isNeon
-          );
-        }
 
         if (activeLayers?.zodiacDecans || activeLayers?.zodiac || activeLayers?.decanatosZodiacales) {
           drawZodiacDecans(
@@ -950,6 +970,85 @@ export default function PolarCanvas({
         );
       }
 
+      // -------------------------------------------------------------
+      // CATEGORÍA 7: CALENDARIO HEBREO
+      // -------------------------------------------------------------
+        if (activeLayers?.enochCalendar || activeLayers?.enoch || activeLayers?.calendarioDeEnoc) {
+          drawEnochCalendar(
+            ctx, 
+            activeLayers, 
+            centerX, 
+            centerY, 
+            mapRadius, 
+            internalRotation, 
+            animTime, 
+            isNeon
+          );
+        }
+
+      if (activeLayers?.hebrewCalendar || activeLayers?.calendarioHebreo) { 
+        drawHebrewCalendar(
+          ctx, 
+          activeLayers, 
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation, 
+          animTime
+        );
+      }
+
+      
+      if (activeLayers?.hebrewShabbat || activeLayers?.shabatHebreo) { 
+        drawHebrewShabbat(
+          ctx, 
+          activeLayers, 
+          centerX, 
+          centerY, 
+          mapRadius, 
+          internalRotation, 
+          animTime
+        );
+      }
+
+      if (activeLayers?.hebrewFeasts || activeLayers?.fiestasHebreas) {
+        drawHebrewFeasts(
+          ctx,
+          activeLayers,
+          centerX,
+          centerY,
+          mapRadius,
+          internalRotation,
+          animTime,
+          isNeon
+        );
+      }
+
+    if (activeLayers?.hebrewRoshChodesh || activeLayers?.mesLunar) {
+      drawHebrewRoshChodesh(
+        ctx,
+        activeLayers,
+        centerX,
+        centerY,
+        mapRadius,
+        internalRotation,
+        animTime,
+        isNeon
+      );
+    }
+
+if (activeLayers?.hebrewTribes || activeLayers?.tribus || activeLayers?.tribusHebreas || activeLayers?.tribesLayer) {
+  drawHebrewTribes(
+    ctx,
+    activeLayers,
+    centerX,
+    centerY,
+    mapRadius,
+    internalRotation,
+    animTime,
+    isNeon
+  );
+}
 
       // -------------------------------------------------------------
       // CATEGORÍA 7: GEOMETRÍA SAGRADA (ENGINE CENTRALIZADO)
